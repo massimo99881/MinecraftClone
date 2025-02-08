@@ -120,31 +120,39 @@ public class Main {
     }
 
     private void loop() {
-    	GL11.glClearColor(0.5f, 0.7f, 1.0f, 1.0f); // Sfondo azzurro per verificare OpenGL
-
+        GL11.glClearColor(0.5f, 0.8f, 0.5f, 1.0f); // Sfondo verde chiaro per il cielo
+        GL11.glEnable(GL11.GL_DEPTH_TEST); // Attiva il depth test per il rendering 3D
+        GL11.glEnable(GL11.GL_CULL_FACE); // Ottimizzazione: nasconde facce non visibili
 
         while (!GLFW.glfwWindowShouldClose(window)) {
             GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
             GL11.glLoadIdentity();
 
-            // 🔥 AGGIORNIAMO LA TELECAMERA
+            // 🏃‍♂️ Gestione della telecamera
             camera.updateInput(window, world);
             camera.applyTransformations();
 
+            // Log di debug per la posizione della telecamera
             System.out.println("📸 Posizione telecamera: (" + camera.getX() + ", " + camera.getY() + ", " + camera.getZ() + ")");
 
+            // 🌍 Render del mondo
             atlas.bind();
             worldRenderer.render();
             atlas.unbind();
 
+            // Gestisce input ed eventi della finestra
             GLFW.glfwSwapBuffers(window);
-            
             GLFW.glfwPollEvents();
-            
-            GL11.glDisable(GL11.GL_CULL_FACE);
 
+            // 💡 Limitazione del frame rate per evitare un rendering troppo veloce
+            try {
+                Thread.sleep(16); // Circa 60 FPS
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
+
 
     public static void main(String[] args) {
         boolean isServer = args.length > 0 && args[0].equalsIgnoreCase("server");
