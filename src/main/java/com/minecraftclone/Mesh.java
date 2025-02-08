@@ -10,23 +10,23 @@ public class Mesh {
 
     private int vaoId;
     private int vboVertices;
-    private int vboTexcoords;
+    private int vboColors;
     private int vertexCount;
 
     public Mesh() {
         // Generazione VAO e VBO all'inizio per evitare problemi di inizializzazione
         vaoId = glGenVertexArrays();
         vboVertices = glGenBuffers();
-        vboTexcoords = glGenBuffers();
+        vboColors = glGenBuffers();
 
-        if (vaoId == 0 || vboVertices == 0 || vboTexcoords == 0) {
+        if (vaoId == 0 || vboVertices == 0 ) {
             throw new RuntimeException("Errore nella creazione di VAO/VBO!");
         }
     }
 
     public void upload(MeshBuilder builder) {
         float[] vertices = builder.getVerticesArray();
-        float[] texcoords = builder.getTexcoordsArray();
+        float[] colors = builder.getColorsArray();
         vertexCount = vertices.length / 3;
 
         if (vertexCount == 0) {
@@ -36,7 +36,6 @@ public class Mesh {
 
         System.out.println("✅ Caricamento della mesh con " + vertexCount + " vertici.");
         System.out.println("🔹 Primo vertice: (" + vertices[0] + ", " + vertices[1] + ", " + vertices[2] + ")");
-        System.out.println("🔹 Prima coordinata texture: (" + texcoords[0] + ", " + texcoords[1] + ")");
 
         glBindVertexArray(vaoId);
 
@@ -45,10 +44,10 @@ public class Mesh {
         glEnableVertexAttribArray(0);
         glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
 
-        glBindBuffer(GL_ARRAY_BUFFER, vboTexcoords);
-        glBufferData(GL_ARRAY_BUFFER, texcoords, GL_STATIC_DRAW);
+        glBindBuffer(GL_ARRAY_BUFFER, vboColors);
+        glBufferData(GL_ARRAY_BUFFER, colors, GL_STATIC_DRAW);
         glEnableVertexAttribArray(1);
-        glVertexAttribPointer(1, 2, GL_FLOAT, false, 0, 0);
+        glVertexAttribPointer(1, 3, GL_FLOAT, false, 0, 0);
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
@@ -73,14 +72,8 @@ public class Mesh {
         glEnableVertexAttribArray(0);
         glEnableVertexAttribArray(1);
 
-        // Attiviamo il rendering delle texture
-        glEnable(GL_TEXTURE_2D);
+        glDrawArrays(GL_QUADS, 0, vertexCount);
 
-        // Disegniamo la mesh
-        System.out.println("🎨 Chiamata a glDrawArrays con " + vertexCount + " vertici...");
-        glDrawArrays(GL_TRIANGLES, 0, vertexCount);
-
-        glDisable(GL_TEXTURE_2D);
         glDisableVertexAttribArray(1);
         glDisableVertexAttribArray(0);
         glBindVertexArray(0);
@@ -97,8 +90,8 @@ public class Mesh {
         if (vboVertices != 0) {
             glDeleteBuffers(vboVertices);
         }
-        if (vboTexcoords != 0) {
-            glDeleteBuffers(vboTexcoords);
+        if (vboColors != 0) {
+            glDeleteBuffers(vboColors);
         }
     }
     

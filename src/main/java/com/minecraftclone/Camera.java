@@ -15,7 +15,7 @@ public class Camera {
     // Rotazioni (pitch = su/giù, yaw = sinistra/destra)
     private float pitch, yaw;
     // Velocità di movimento
-    private float speed = 0.3f;
+    private float speed = 0.05f;
     // Sensibilità della rotazione
     private float sensitivity = 2.0f;
     // Bounding box del giocatore
@@ -35,6 +35,8 @@ public class Camera {
         this.x = x;
         this.y = y; 
         this.z = z;
+        this.pitch = 0;
+        this.yaw = 0;
         System.out.println("📷 Telecamera inizializzata a: (" + x + ", " + y + ", " + z + ")");
     }
 
@@ -98,42 +100,38 @@ public class Camera {
     /**
      * Prova a muovere la telecamera e impedisce il passaggio attraverso blocchi solidi.
      */
-    private void attemptMove(float dx, float dy, float dz, World world) {
+    public void attemptMove(float dx, float dy, float dz, World world) {
         float newX = x + dx;
         float newY = y + dy;
         float newZ = z + dz;
 
         if (!collides(newX, newY, newZ, world)) {
-            System.out.println("📍 Movendo la telecamera a (" + newX + ", " + newY + ", " + newZ + ")");
             x = newX;
             y = newY;
             z = newZ;
+            System.out.println("✅ Movendo la telecamera a (" + x + ", " + y + ", " + z + ")");
         } else {
-            System.out.println("⛔ Collisione! Impossibile muoversi a (" + newX + ", " + newY + ", " + newZ + ")");
+            System.out.println("❌ Collisione! Impossibile muoversi a (" + newX + ", " + newY + ", " + newZ + ")");
         }
     }
 
-
-    /**
-     * Controlla se la bounding box della telecamera collide con un blocco solido.
-     */
     private boolean collides(float nx, float ny, float nz, World world) {
         int minX = (int) Math.floor(nx);
-        int maxX = (int) Math.floor(nx + WIDTH);
+        int maxX = (int) Math.floor(nx + 1);
         int minY = (int) Math.floor(ny);
-        int maxY = (int) Math.floor(ny + HEIGHT);
+        int maxY = (int) Math.floor(ny + 1);
         int minZ = (int) Math.floor(nz);
-        int maxZ = (int) Math.floor(nz + DEPTH);
+        int maxZ = (int) Math.floor(nz + 1);
 
-//        for (int x = minX; x <= maxX; x++) {
-//            for (int y = minY; y <= maxY; y++) {
-//                for (int z = minZ; z <= maxZ; z++) {
-//                    if (world.getBlock(x, y, z).isSolid()) {
-//                        return true;
-//                    }
-//                }
-//            }
-//        }
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    if (world.getBlock(x, y, z).isSolid()) {
+                        return true;
+                    }
+                }
+            }
+        }
         
         for (int x = minX; x <= maxX; x++) {
             for (int z = minZ; z <= maxZ; z++) {
@@ -143,9 +141,10 @@ public class Camera {
                 }
             }
         }
-
+        
         return false;
     }
+
 
     // Metodi Getter per la posizione della telecamera
     public float getX() { return x; }

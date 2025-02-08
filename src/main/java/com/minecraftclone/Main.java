@@ -98,21 +98,16 @@ public class Main {
         System.out.println("🔄 Creazione del mondo...");
         world = new World();
         
-     // 🔍 Controllo del blocco iniziale della telecamera
-        Block startBlock = world.getBlock(8, 5, 8);
-        System.out.println("📢 Blocco alla posizione iniziale della telecamera: " + startBlock);
-
         System.out.println("🔄 Creazione del renderer del mondo...");
         worldRenderer = new WorldRenderer(world);
         
-        worldRenderer.getWorld().debugCheck();
+//        worldRenderer.getWorld().debugCheck();
 
-        // Posizioniamo la telecamera sopra il terreno iniziale
-        System.out.println("🔄 Creazione della telecamera...");
-        //camera = new Camera(8.0f, 20.0f, 8.0f);
-        
-        camera = new Camera(8.0f, 10.0f, 8.0f);  // Prova a metterla più in alto
+        int startX = 8, startZ = 8;
+        int startY = world.getSurfaceHeight(startX, startZ) + 2; // Posiziona la telecamera sopra il terreno
 
+        System.out.println("📸 Telecamera inizializzata a: (" + startX + ", " + startY + ", " + startZ + ")");
+        camera = new Camera(startX, startY, startZ);
     }
 
     private void connectToServer() {
