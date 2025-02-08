@@ -1,0 +1,16 @@
+com\minecraftclone\ServerHandler.class
+com\minecraftclone\Main.class
+com\minecraftclone\GameClient$1.class
+com\minecraftclone\GameServer$1.class
+com\minecraftclone\GameServer.class
+com\minecraftclone\Mesh.class
+com\minecraftclone\WorldRenderer.class
+com\minecraftclone\GameClient.class
+com\minecraftclone\TextureAtlas.class
+com\minecraftclone\PlayerAction.class
+com\minecraftclone\Block.class
+com\minecraftclone\Camera.class
+com\minecraftclone\ClientHandler.class
+com\minecraftclone\MeshBuilder.class
+com\minecraftclone\World.class
+com\minecraftclone\GameUpdate.class
