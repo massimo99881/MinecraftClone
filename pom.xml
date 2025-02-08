@@ -17,6 +17,16 @@
     </properties>
 
     <dependencies>
+		
+		<dependency>
+		    <groupId>local.libs</groupId>
+		    <artifactId>OpenSimplexNoise</artifactId>
+		    <version>1.0</version>
+		    <scope>system</scope>
+		    <systemPath>C:/devops/MinecraftClone/libs/OpenSimplexNoise.jar</systemPath>
+		</dependency>
+
+		
 		<dependency>
 		    <groupId>org.joml</groupId>
 		    <artifactId>joml</artifactId>

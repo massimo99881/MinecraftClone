@@ -43,6 +43,15 @@
       </plugin>
     </plugins>
   </build>
+  <dependencies>
+    <dependency>
+      <groupId>local.libs</groupId>
+      <artifactId>OpenSimplexNoise</artifactId>
+      <version>1.0</version>
+      <scope>system</scope>
+      <systemPath>C:/devops/MinecraftClone/libs/OpenSimplexNoise.jar</systemPath>
+    </dependency>
+  </dependencies>
   <properties>
     <maven.compiler.target>17</maven.compiler.target>
     <netty.version>4.1.86.Final</netty.version>
