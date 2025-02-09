@@ -5,13 +5,19 @@ public class Block {
     private boolean solid;
     private float[] color;
 
-    // Blocchi disponibili
-    public static final Block AIR    = new Block("AIR", false, new float[]{0.5f, 0.7f, 1.0f});   // Sfondo/aria (azzurro)
-    public static final Block DIRT   = new Block("DIRT", true, new float[]{0.5f, 0.3f, 0.1f});    // Terra (marrone)
-    public static final Block GRASS  = new Block("GRASS", true, new float[]{0.1f, 0.6f, 0.1f});   // Superficie erbosa (verde)
-    public static final Block WATER  = new Block("WATER", false, new float[]{0.0f, 0.5f, 1.0f});  // Acqua (azzurro)
-    public static final Block TRUNK  = new Block("TRUNK", true, new float[]{0.8f, 0.7f, 0.5f});   // Tronco (marrone chiaro)
-    public static final Block LEAVES = new Block("LEAVES", true, new float[]{0.0f, 0.8f, 0.0f});   // Foglie (verde brillante)
+    // Definizioni dei blocchi:
+    // AIR: usato per l'aria e lo sfondo (azzurro)
+    // DIRT: terreno (marrone)
+    // GRASS: superficie erbosa (verde)
+    // WATER: acqua per i laghi (azzurro)
+    // TRUNK: tronco degli alberi (marrone chiaro)
+    // LEAVES: foglie degli alberi (verde)
+    public static final Block AIR    = new Block("AIR", false, new float[]{0.5f, 0.7f, 1.0f});   // Azzurro (sfondo/aria)
+    public static final Block DIRT   = new Block("DIRT", true, new float[]{0.5f, 0.3f, 0.1f});    // Marrone
+    public static final Block GRASS  = new Block("GRASS", true, new float[]{0.1f, 0.6f, 0.1f});   // Verde (erba)
+    public static final Block WATER  = new Block("WATER", false, new float[]{0.0f, 0.7f, 1.0f});  // Azzurro (laghi)
+    public static final Block TRUNK  = new Block("TRUNK", true, new float[]{0.8f, 0.7f, 0.5f});   // Marrone chiaro (tronchi)
+    public static final Block LEAVES = new Block("LEAVES", true, new float[]{0.0f, 0.8f, 0.0f});   // Verde (foglie)
 
     public Block(String name, boolean solid, float[] color) {
         this.name = name;

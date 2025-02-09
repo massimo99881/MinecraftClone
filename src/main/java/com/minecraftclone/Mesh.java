@@ -68,18 +68,35 @@ public class Mesh {
 
         System.out.println("🎮 Disegnando mesh con " + vertexCount + " vertici...");
 
+        // Assumiamo che tu stia usando il VAO già creato.
         glBindVertexArray(vaoId);
-        glEnableVertexAttribArray(0);
-        glEnableVertexAttribArray(1);
 
-        glDrawArrays(GL_QUADS, 0, vertexCount);
+        // Abilita le array di vertici e colori per il fixed function pipeline
+        glEnableClientState(GL11.GL_VERTEX_ARRAY);
+        glEnableClientState(GL11.GL_COLOR_ARRAY);
 
-        glDisableVertexAttribArray(1);
-        glDisableVertexAttribArray(0);
+        // Collega il VBO dei vertici e imposta il puntatore
+        glBindBuffer(GL_ARRAY_BUFFER, vboVertices);
+        glVertexPointer(3, GL11.GL_FLOAT, 0, 0);
+
+        // Collega il VBO dei colori e imposta il puntatore
+        glBindBuffer(GL_ARRAY_BUFFER, vboColors);
+        glColorPointer(3, GL11.GL_FLOAT, 0, 0);
+
+        // Disegna la mesh (usando GL_QUADS, che nella compatibilità va bene)
+        glDrawArrays(GL11.GL_QUADS, 0, vertexCount);
+
+        // Disabilita le client state
+        glDisableClientState(GL11.GL_COLOR_ARRAY);
+        glDisableClientState(GL11.GL_VERTEX_ARRAY);
+
+        // Unbind del VAO e dei buffer
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindVertexArray(0);
 
         System.out.println("✅ Rendering completato.");
     }
+
 
 
     public void cleanUp() {
