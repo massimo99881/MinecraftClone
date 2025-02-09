@@ -45,6 +45,49 @@ public class MeshBuilder {
     
     /**
      * Aggiunge un cubo completo (6 facce) nella posizione (x, y, z)
+     * usando il colore specificato (per l'outline).
+     */
+    public void addCubeWithColor(int x, int y, int z, float[] color) {
+        // Front face (normale +Z)
+        addQuad(x, y, z + 1, 
+                x + 1, y, z + 1, 
+                x + 1, y + 1, z + 1, 
+                x, y + 1, z + 1, color);
+
+        // Back face (normale -Z)
+        addQuad(x + 1, y, z, 
+                x, y, z, 
+                x, y + 1, z, 
+                x + 1, y + 1, z, color);
+
+        // Left face (normale -X)
+        addQuad(x, y, z + 1, 
+                x, y, z, 
+                x, y + 1, z, 
+                x, y + 1, z + 1, color);
+
+        // Right face (normale +X)
+        addQuad(x + 1, y, z, 
+                x + 1, y, z + 1, 
+                x + 1, y + 1, z + 1, 
+                x + 1, y + 1, z, color);
+
+        // Top face (normale +Y)
+        addQuad(x, y + 1, z + 1, 
+                x + 1, y + 1, z + 1, 
+                x + 1, y + 1, z, 
+                x, y + 1, z, color);
+
+        // Bottom face (normale -Y)
+        addQuad(x, y, z, 
+                x + 1, y, z, 
+                x + 1, y, z + 1, 
+                x, y, z + 1, color);
+    }
+
+    
+    /**
+     * Aggiunge un cubo completo (6 facce) nella posizione (x, y, z)
      * con il colore fornito dal blocco.
      *
      * L'ordine dei vertici per ciascuna faccia è impostato in modo

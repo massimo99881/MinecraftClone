@@ -4,53 +4,91 @@ import org.lwjgl.opengl.GL11;
 
 public class WorldRenderer {
     private World world;
-    private Mesh terrainMesh;  // Mesh per i blocchi del terreno (ad es. DIRT e GRASS)
-    private Mesh otherMesh;    // Mesh per gli altri blocchi (ad es. WATER, TRUNK, LEAVES)
-
+    
+    // Mesh di fill per tutti i blocchi
+    private Mesh fillMesh;
+    
+    // Mesh per gli outline, separate per tipo
+    private Mesh outlineMesh_Dirt;
+    private Mesh outlineMesh_Grass;
+    private Mesh outlineMesh_Water;
+    private Mesh outlineMesh_Trunk;
+    private Mesh outlineMesh_Leaves;
+    
     public WorldRenderer(World world) {
         this.world = world;
-        this.terrainMesh = new Mesh();
-        this.otherMesh = new Mesh();
-        rebuildMesh();
+        fillMesh = new Mesh();
+        outlineMesh_Dirt = new Mesh();
+        outlineMesh_Grass = new Mesh();
+        outlineMesh_Water = new Mesh();
+        outlineMesh_Trunk = new Mesh();
+        outlineMesh_Leaves = new Mesh();
+        rebuildMeshes();
     }
-
-    public void rebuildMesh() {
-        MeshBuilder terrainBuilder = new MeshBuilder();
-        MeshBuilder otherBuilder = new MeshBuilder();
-
+    
+    public void rebuildMeshes() {
+        MeshBuilder fillBuilder = new MeshBuilder();
+        MeshBuilder builderOutline_Dirt = new MeshBuilder();
+        MeshBuilder builderOutline_Grass = new MeshBuilder();
+        MeshBuilder builderOutline_Water = new MeshBuilder();
+        MeshBuilder builderOutline_Trunk = new MeshBuilder();
+        MeshBuilder builderOutline_Leaves = new MeshBuilder();
+        
+        // Scorri l'intero mondo
         for (int x = 0; x < World.SIZE_X; x++) {
             for (int y = 0; y < World.HEIGHT; y++) {
                 for (int z = 0; z < World.SIZE_Z; z++) {
                     Block block = world.getBlock(x, y, z);
                     if (block != Block.AIR) {  // Salta i blocchi d'aria
-                        // Inserisce i blocchi relativi al terreno (ad esempio DIRT e GRASS)
-                        if (block == Block.DIRT || block == Block.GRASS) {
-                            terrainBuilder.addCube(x, y, z, block);
-                        } else {
-                            otherBuilder.addCube(x, y, z, block);
+                        // Aggiungi il cubo di fill con il colore definito dal blocco
+                        fillBuilder.addCube(x, y, z, block);
+                        
+                        // Aggiungi il cubo all'outline in base al tipo
+                        if (block == Block.DIRT) {
+                            // Outline nero per il terreno
+                            builderOutline_Dirt.addCubeWithColor(x, y, z, new float[]{0.0f, 0.0f, 0.0f});
+                        } else if (block == Block.GRASS) {
+                            // Outline verde scuro per l'erba
+                            builderOutline_Grass.addCubeWithColor(x, y, z, new float[]{0.0f, 0.4f, 0.0f});
+                        } else if (block == Block.WATER) {
+                            // Outline blu scuro per l'acqua
+                            builderOutline_Water.addCubeWithColor(x, y, z, new float[]{0.0f, 0.0f, 0.4f});
+                        } else if (block == Block.TRUNK) {
+                            // Outline marrone scuro per i tronchi
+                            builderOutline_Trunk.addCubeWithColor(x, y, z, new float[]{0.4f, 0.2f, 0.0f});
+                        } else if (block == Block.LEAVES) {
+                            // Outline verde scuro per le foglie
+                            builderOutline_Leaves.addCubeWithColor(x, y, z, new float[]{0.0f, 0.4f, 0.0f});
                         }
                     }
                 }
             }
         }
-
-        terrainMesh.upload(terrainBuilder);
-        otherMesh.upload(otherBuilder);
+        
+        // Carica i dati nelle mesh
+        fillMesh.upload(fillBuilder);
+        outlineMesh_Dirt.upload(builderOutline_Dirt);
+        outlineMesh_Grass.upload(builderOutline_Grass);
+        outlineMesh_Water.upload(builderOutline_Water);
+        outlineMesh_Trunk.upload(builderOutline_Trunk);
+        outlineMesh_Leaves.upload(builderOutline_Leaves);
     }
-
+    
     public void render() {
-        // Renderizza gli altri blocchi normalmente
-        otherMesh.render();
-        // Renderizza i blocchi del terreno in modalità fill
-        terrainMesh.render();
-
-        // Ora disegniamo un contorno nero attorno ai blocchi del terreno:
+        // Renderizza la mesh di fill normalmente
+        fillMesh.render();
+        
+        // Attiva la modalità wireframe per disegnare gli outline
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
         GL11.glLineWidth(2.0f);
-        GL11.glColor3f(0.0f, 0.0f, 0.0f);
-        terrainMesh.render();
-        // Ripristina la modalità fill e il colore bianco per il rendering successivo
+        
+        outlineMesh_Dirt.render();
+        outlineMesh_Grass.render();
+        outlineMesh_Water.render();
+        outlineMesh_Trunk.render();
+        outlineMesh_Leaves.render();
+        
+        // Ripristina la modalità fill
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
-        GL11.glColor3f(1.0f, 1.0f, 1.0f);
     }
 }
