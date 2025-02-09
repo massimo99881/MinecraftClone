@@ -4,17 +4,17 @@ import org.lwjgl.opengl.GL11;
 
 public class WorldRenderer {
     private World world;
-    
+
     // Mesh di fill per tutti i blocchi
     private Mesh fillMesh;
-    
+
     // Mesh per gli outline, separate per tipo
     private Mesh outlineMesh_Dirt;
     private Mesh outlineMesh_Grass;
     private Mesh outlineMesh_Water;
     private Mesh outlineMesh_Trunk;
     private Mesh outlineMesh_Leaves;
-    
+
     public WorldRenderer(World world) {
         this.world = world;
         fillMesh = new Mesh();
@@ -25,7 +25,7 @@ public class WorldRenderer {
         outlineMesh_Leaves = new Mesh();
         rebuildMeshes();
     }
-    
+
     public void rebuildMeshes() {
         MeshBuilder fillBuilder = new MeshBuilder();
         MeshBuilder builderOutline_Dirt = new MeshBuilder();
@@ -33,7 +33,7 @@ public class WorldRenderer {
         MeshBuilder builderOutline_Water = new MeshBuilder();
         MeshBuilder builderOutline_Trunk = new MeshBuilder();
         MeshBuilder builderOutline_Leaves = new MeshBuilder();
-        
+
         // Scorri l'intero mondo
         for (int x = 0; x < World.SIZE_X; x++) {
             for (int y = 0; y < World.HEIGHT; y++) {
@@ -42,29 +42,30 @@ public class WorldRenderer {
                     if (block != Block.AIR) {  // Salta i blocchi d'aria
                         // Aggiungi il cubo di fill con il colore definito dal blocco
                         fillBuilder.addCube(x, y, z, block);
-                        
+
                         // Aggiungi il cubo all'outline in base al tipo
-                        if (block == Block.DIRT) {
-                            // Outline nero per il terreno
-                            builderOutline_Dirt.addCubeWithColor(x, y, z, new float[]{0.0f, 0.0f, 0.0f});
-                        } else if (block == Block.GRASS) {
-                            // Outline verde scuro per l'erba
-                            builderOutline_Grass.addCubeWithColor(x, y, z, new float[]{0.0f, 0.4f, 0.0f});
-                        } else if (block == Block.WATER) {
-                            // Outline blu scuro per l'acqua
-                            builderOutline_Water.addCubeWithColor(x, y, z, new float[]{0.0f, 0.0f, 0.4f});
-                        } else if (block == Block.TRUNK) {
-                            // Outline marrone scuro per i tronchi
-                            builderOutline_Trunk.addCubeWithColor(x, y, z, new float[]{0.4f, 0.2f, 0.0f});
-                        } else if (block == Block.LEAVES) {
-                            // Outline verde scuro per le foglie
-                            builderOutline_Leaves.addCubeWithColor(x, y, z, new float[]{0.0f, 0.4f, 0.0f});
+                        switch (block.getName()) {
+                            case "DIRT":
+                                builderOutline_Dirt.addCubeWithColor(x, y, z, new float[]{0.0f, 0.0f, 0.0f});
+                                break;
+                            case "GRASS":
+                                builderOutline_Grass.addCubeWithColor(x, y, z, new float[]{0.0f, 0.4f, 0.0f});
+                                break;
+                            case "WATER":
+                                builderOutline_Water.addCubeWithColor(x, y, z, new float[]{0.0f, 0.0f, 0.4f});
+                                break;
+                            case "TRUNK":
+                                builderOutline_Trunk.addCubeWithColor(x, y, z, new float[]{0.4f, 0.2f, 0.0f});
+                                break;
+                            case "LEAVES":
+                                builderOutline_Leaves.addCubeWithColor(x, y, z, new float[]{0.0f, 0.4f, 0.0f});
+                                break;
                         }
                     }
                 }
             }
         }
-        
+
         // Carica i dati nelle mesh
         fillMesh.upload(fillBuilder);
         outlineMesh_Dirt.upload(builderOutline_Dirt);
@@ -73,22 +74,31 @@ public class WorldRenderer {
         outlineMesh_Trunk.upload(builderOutline_Trunk);
         outlineMesh_Leaves.upload(builderOutline_Leaves);
     }
-    
+
     public void render() {
         // Renderizza la mesh di fill normalmente
         fillMesh.render();
-        
+
         // Attiva la modalità wireframe per disegnare gli outline
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
         GL11.glLineWidth(2.0f);
-        
+
         outlineMesh_Dirt.render();
         outlineMesh_Grass.render();
         outlineMesh_Water.render();
         outlineMesh_Trunk.render();
         outlineMesh_Leaves.render();
-        
+
         // Ripristina la modalità fill
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+    }
+
+    public void cleanup() {
+        fillMesh.cleanUp();
+        outlineMesh_Dirt.cleanUp();
+        outlineMesh_Grass.cleanUp();
+        outlineMesh_Water.cleanUp();
+        outlineMesh_Trunk.cleanUp();
+        outlineMesh_Leaves.cleanUp();
     }
 }
