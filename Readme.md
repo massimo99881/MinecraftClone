@@ -9,3 +9,9 @@ Esegui Main.java
 ## Revert GIT
 
 git checkout -- .
+
+## Nuovo branch
+
+git checkout -b dev2
+
+git push --set-upstream origin dev2
