@@ -105,8 +105,9 @@ public class Main {
         System.out.println("🔄 Creazione del renderer del mondo...");
         worldRenderer = new WorldRenderer(world);
 
-        int startX = 8, startZ = 8;
-        int startY = world.getSurfaceHeight(startX, startZ) + 2; // Posiziona la telecamera sopra il terreno
+        float startX = 30.844f, startZ = 15.284f;
+        //int startY = Math.max(2, world.getSurfaceHeight(startX, startZ) + 2);
+        float startY = 4.589f;// world.getSurfaceHeight(startX, startZ);
 
         System.out.println("📸 Telecamera inizializzata a: (" + startX + ", " + startY + ", " + startZ + ")");
         camera = new Camera(startX, startY, startZ);

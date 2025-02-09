@@ -7,7 +7,7 @@ import org.lwjgl.opengl.GL11;
 public class Camera {
     private float x, y, z;  // Posizione della camera
     private float pitch, yaw; // Rotazioni
-    private float speed = 0.1f; // Velocità di movimento
+    private float speed = 0.01f; // Velocità di movimento
     
     private static final float WIDTH = 0.25f;
     private static final float HEIGHT = 0.45f;

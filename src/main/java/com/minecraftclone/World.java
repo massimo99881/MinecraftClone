@@ -7,16 +7,19 @@ public class World {
     public static final int SIZE_X = 128;
     public static final int SIZE_Z = 128;
     public static final int HEIGHT = 64;
-    public static final float BLOCK_SIZE = 0.25f;
+    public static final float BLOCK_SIZE = 0.25f; //0.025f;
 
     private Block[][][] blocks;
     private OpenSimplexNoise noiseGenerator;
     private Random random;
 
     public World() {
+    	random = new Random();
         blocks = new Block[SIZE_X][HEIGHT][SIZE_Z];
-        noiseGenerator = new OpenSimplexNoise(new Random().nextLong());
-        random = new Random();
+        long fixedSeed = 1; // Seed fisso per garantire terreno uguale ad ogni esecuzione
+        //long fixedSeed = random.nextLong();
+        noiseGenerator = new OpenSimplexNoise(fixedSeed);
+
         generateWorld();
     }
 
@@ -37,7 +40,7 @@ public class World {
         }
         generateFeatures();
     }
-
+    
     private int calculateHeight(int x, int z) {
         // Calcola altezza basata su noise per un terreno più realistico
         if (Math.abs(x - SIZE_X / 2) < 20 && Math.abs(z - SIZE_Z / 2) < 20) {
@@ -46,89 +49,122 @@ public class World {
             return (int) (noiseGenerator.noise(x * 0.05f, z * 0.05f) * 10 + 10); // Altezza variabile
         }
     }
-    
+
+//    private int calculateHeight(int x, int z) {
+//        int baseHeight = 6; // Altezza base del terreno
+//        return baseHeight + (int) (noiseGenerator.noise(x * 0.05f, z * 0.05f) * 10);
+//    }
+
     private void generateFeatures() {
-        createLake();
-        createPonds();
+        System.out.println("🌳 Generazione Alberi...");
         plantTrees();
+
+        System.out.println("🌊 Generazione Laghi...");
+        createLakes();
     }
 
-    private void createLake() {
-        // Creazione di un grande lago
-        int lakeCenterX = SIZE_X / 2 + 20;
-        int lakeCenterZ = SIZE_Z / 2 + 20;
-        int lakeRadius = 10;
-        for (int x = lakeCenterX - lakeRadius; x <= lakeCenterX + lakeRadius; x++) {
-            for (int z = lakeCenterZ - lakeRadius; z <= lakeCenterZ + lakeRadius; z++) {
-                fillWater(x, z, lakeRadius);
+    private void createLakes() {
+        int numLakes = 5; // Numero di laghi aumentato
+        int lakeRadius = (int) (4 / BLOCK_SIZE); // Raggio dei laghi
+
+        for (int i = 0; i < numLakes; i++) {
+            int centerX = random.nextInt(SIZE_X);
+            int centerZ = random.nextInt(SIZE_Z);
+            int centerY = findLowestPoint(centerX, centerZ, lakeRadius);
+
+            if (centerY > 1) {
+                fillWater(centerX, centerZ, centerY, lakeRadius);
             }
         }
     }
 
-    private void createPonds() {
-        // Creazione di piccoli laghetti
-        createPond(SIZE_X / 2 - 30, SIZE_Z / 2 - 20, 3);
-    }
+    private int findLowestPoint(int x, int z, int radius) {
+        int minY = HEIGHT;
 
-    private void createPond(int centerX, int centerZ, int radius) {
-        for (int x = centerX - radius; x <= centerX + radius; x++) {
-            for (int z = centerZ - radius; z <= centerZ + radius; z++) {
-                fillWater(x, z, radius);
-            }
-        }
-    }
-
-    private void fillWater(int x, int z, int radius) {
-        if (x >= 0 && x < SIZE_X && z >= 0 && z < SIZE_Z) {
-            int dx = x - (SIZE_X / 2 + 20);
-            int dz = z - (SIZE_Z / 2 + 20);
-            if (dx * dx + dz * dz <= radius * radius) {
-                int surfaceY = getSurfaceHeight(x, z);
-                blocks[x][surfaceY][z] = Block.WATER;
-            }
-        }
-    }
-
-    private void plantTrees() {
-        // Generazione di alberi casuali
-        int numberOfTrees = 20;
-        for (int i = 0; i < numberOfTrees; i++) {
-            int x = random.nextInt(SIZE_X);
-            int z = random.nextInt(SIZE_Z);
-            int y = getSurfaceHeight(x, z);
-            if (blocks[x][y][z] == Block.GRASS) {
-                addTree(x, y + 1, z);
-            }
-        }
-    }
-
-    private void addTree(int x, int y, int z) {
-        // Aggiunge un albero con tronco e chioma
-        int trunkHeight = 4 + random.nextInt(2);
-        for (int i = 0; i < trunkHeight; i++) {
-            blocks[x][y + i][z] = Block.TRUNK;
-        }
-        // Aggiunta della chioma
-        addCanopy(x, y + trunkHeight, z);
-    }
-
-    private void addCanopy(int x, int y, int z) {
-        int radius = 2;
         for (int dx = -radius; dx <= radius; dx++) {
             for (int dz = -radius; dz <= radius; dz++) {
-                for (int dy = 0; dy <= radius; dy++) {
-                    int nx = x + dx;
-                    int ny = y + dy;
-                    int nz = z + dz;
-                    if (nx >= 0 && nx < SIZE_X && nz >= 0 && nz < SIZE_Z && ny < HEIGHT && blocks[nx][ny][nz] == Block.AIR) {
-                        blocks[nx][ny][nz] = Block.LEAVES;
+                int checkX = x + dx;
+                int checkZ = z + dz;
+
+                if (checkX >= 0 && checkX < SIZE_X && checkZ >= 0 && checkZ < SIZE_Z) {
+                    int height = getSurfaceHeight(checkX, checkZ);
+                    if (height < minY) {
+                        minY = height;
+                    }
+                }
+            }
+        }
+        return minY;
+    }
+
+    private void fillWater(int x, int z, int y, int radius) {
+        int waterLevel = y - 1; // Abbassiamo il livello dell'acqua di 1 per evitare problemi di posizionamento
+
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                int checkX = x + dx;
+                int checkZ = z + dz;
+
+                if (checkX >= 0 && checkX < SIZE_X && checkZ >= 0 && checkZ < SIZE_Z) {
+                    int surfaceY = getSurfaceHeight(checkX, checkZ);
+
+                    // Riempie le zone basse con l'acqua e le cavità sottostanti
+                    if (surfaceY <= waterLevel) {
+                        for (int fillY = waterLevel; fillY >= surfaceY; fillY--) {
+                            if (blocks[checkX][fillY][checkZ] == Block.AIR) {
+                                blocks[checkX][fillY][checkZ] = Block.WATER;
+                            }
+                        }
                     }
                 }
             }
         }
     }
 
-    // Restituisce il blocco alla posizione specificata
+    private void plantTrees() {
+        int numberOfTrees = 20;
+
+        for (int i = 0; i < numberOfTrees; i++) {
+            int x = random.nextInt(SIZE_X);
+            int z = random.nextInt(SIZE_Z);
+            int y = getSurfaceHeight(x, z);
+
+            if (y < HEIGHT - 5 && blocks[x][y][z] == Block.GRASS) {
+                addTree(x, y + 1, z);
+            }
+        }
+    }
+
+    private void addTree(int x, int y, int z) {
+        int trunkHeight = random.nextInt(2) + 3; // Tronco tra 3 e 4 blocchi
+
+        for (int i = 0; i < trunkHeight; i++) {
+            blocks[x][y + i][z] = Block.TRUNK;
+        }
+
+        addCanopy(x, y + trunkHeight, z);
+    }
+
+    private void addCanopy(int x, int y, int z) {
+        int radius = 2;
+
+        for (int dx = -radius; dx <= radius; dx++) {
+            for (int dz = -radius; dz <= radius; dz++) {
+                for (int dy = 0; dy <= radius / 2; dy++) {
+                    int nx = x + dx;
+                    int ny = y + dy;
+                    int nz = z + dz;
+
+                    if (nx >= 0 && nx < SIZE_X && nz >= 0 && nz < SIZE_Z && ny < HEIGHT) {
+                        if (Math.abs(dx) + Math.abs(dz) < radius) {
+                            blocks[nx][ny][nz] = Block.LEAVES;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     public Block getBlock(int x, int y, int z) {
         if (x < 0 || x >= SIZE_X || y < 0 || y >= HEIGHT || z < 0 || z >= SIZE_Z) {
             return Block.AIR;
@@ -137,15 +173,18 @@ public class World {
     }
 
     public int getSurfaceHeight(int x, int z) {
-        int scaledX = Math.floorDiv(x, (int) (1 / BLOCK_SIZE));
-        int scaledZ = Math.floorDiv(z, (int) (1 / BLOCK_SIZE));
+//    	int scaledX = Math.floorDiv(x, (int) (1 / BLOCK_SIZE));
+//      int scaledZ = Math.floorDiv(z, (int) (1 / BLOCK_SIZE));
+
+        int scaledX = Math.min(SIZE_X - 1, Math.max(0, (int) (x / BLOCK_SIZE)));
+        int scaledZ = Math.min(SIZE_Z - 1, Math.max(0, (int) (z / BLOCK_SIZE)));
 
         for (int y = HEIGHT - 1; y >= 0; y--) {
             if (blocks[scaledX][y][scaledZ] != Block.AIR) {
-                return (int) (y * World.BLOCK_SIZE) + 1; // Adatta all'altezza dei blocchi più piccoli
+                return y + 1;
+                //return (int) (y * World.BLOCK_SIZE) + 1; // Adatta all'altezza dei blocchi più piccoli
             }
         }
         return 0;
     }
-
 }
