@@ -49,7 +49,7 @@ public class Main {
     }
 
     private void initWindow() {
-        if (!GLFW.glfwInit()) {
+    	if (!GLFW.glfwInit()) {
             throw new IllegalStateException("Impossibile inizializzare GLFW");
         }
 
@@ -67,6 +67,10 @@ public class Main {
 
         GLFW.glfwMakeContextCurrent(window);
         GL.createCapabilities();
+        
+        // Verifica: imposta la modalità di texture per usare il colore dei vertici (modulate)
+        GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_MODULATE);
+        
         System.out.println("✅ OpenGL inizializzato correttamente.");
 
         // Imposta la matrice di proiezione con JOML
