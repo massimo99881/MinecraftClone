@@ -9,9 +9,9 @@ public class Camera {
     private float pitch, yaw; // Rotazioni
     private float speed = 0.1f; // Velocità di movimento
     
-    private static final float WIDTH = 0.6f;
-    private static final float HEIGHT = 1.8f;
-    private static final float DEPTH = 0.6f;
+    private static final float WIDTH = 0.25f;
+    private static final float HEIGHT = 0.45f;
+    private static final float DEPTH = 0.25f;
 
     public Camera(float x, float y, float z) {
         this.x = x;
@@ -85,17 +85,18 @@ public class Camera {
     }
 
     private boolean collides(float nx, float ny, float nz, World world) {
-        int minX = (int) Math.floor(nx);
-        int maxX = (int) Math.floor(nx + WIDTH);
-        int minY = (int) Math.floor(ny);
-        int maxY = (int) Math.floor(ny + HEIGHT);
-        int minZ = (int) Math.floor(nz);
-        int maxZ = (int) Math.floor(nz + DEPTH);
+        int minX = (int) Math.floor(nx / World.BLOCK_SIZE);
+        int maxX = (int) Math.floor((nx + WIDTH) / World.BLOCK_SIZE);
+        int minY = (int) Math.floor(ny / World.BLOCK_SIZE);
+        int maxY = (int) Math.floor((ny + HEIGHT) / World.BLOCK_SIZE);
+        int minZ = (int) Math.floor(nz / World.BLOCK_SIZE);
+        int maxZ = (int) Math.floor((nz + DEPTH) / World.BLOCK_SIZE);
 
         for (int x = minX; x <= maxX; x++) {
             for (int y = minY; y <= maxY; y++) {
                 for (int z = minZ; z <= maxZ; z++) {
                     if (world.getBlock(x, y, z).isSolid()) {
+                        System.out.println("Collision at: " + x + "," + y + "," + z);
                         return true;
                     }
                 }
@@ -103,6 +104,7 @@ public class Camera {
         }
         return false;
     }
+
 
     public void applyTransformations() {
         GL11.glRotatef(pitch, 1, 0, 0);

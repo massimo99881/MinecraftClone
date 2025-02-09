@@ -60,6 +60,23 @@ public class MeshBuilder {
     }
 
     private void addQuad(float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float[] color) {
+        // Scala le coordinate alla dimensione del blocco
+        x1 *= World.BLOCK_SIZE;
+        y1 *= World.BLOCK_SIZE;
+        z1 *= World.BLOCK_SIZE;
+
+        x2 *= World.BLOCK_SIZE;
+        y2 *= World.BLOCK_SIZE;
+        z2 *= World.BLOCK_SIZE;
+
+        x3 *= World.BLOCK_SIZE;
+        y3 *= World.BLOCK_SIZE;
+        z3 *= World.BLOCK_SIZE;
+
+        x4 *= World.BLOCK_SIZE;
+        y4 *= World.BLOCK_SIZE;
+        z4 *= World.BLOCK_SIZE;
+
         // Aggiunge i 4 vertici del quadrilatero alla lista dei vertici
         vertices.add(x1); vertices.add(y1); vertices.add(z1);
         vertices.add(x2); vertices.add(y2); vertices.add(z2);

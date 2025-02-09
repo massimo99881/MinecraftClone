@@ -4,10 +4,10 @@ import java.util.Random;
 import algorithms.noise.OpenSimplexNoise;
 
 public class World {
-    public static final int SIZE_X = 128;  // Dimensioni ridotte del mondo
+    public static final int SIZE_X = 128;
     public static final int SIZE_Z = 128;
-    public static final int HEIGHT = 32;   // Altezza ridotta
-    public static final int BLOCK_SIZE = 1; // Dimensione standard di un blocco
+    public static final int HEIGHT = 64;
+    public static final float BLOCK_SIZE = 0.25f;
 
     private Block[][][] blocks;
     private OpenSimplexNoise noiseGenerator;
@@ -21,7 +21,6 @@ public class World {
     }
 
     private void generateWorld() {
-        // Genera il terreno base
         for (int x = 0; x < SIZE_X; x++) {
             for (int z = 0; z < SIZE_Z; z++) {
                 int height = calculateHeight(x, z);
@@ -47,7 +46,7 @@ public class World {
             return (int) (noiseGenerator.noise(x * 0.05f, z * 0.05f) * 10 + 10); // Altezza variabile
         }
     }
-
+    
     private void generateFeatures() {
         createLake();
         createPonds();
@@ -137,13 +136,16 @@ public class World {
         return blocks[x][y][z];
     }
 
-    // Restituisce l'altezza della superficie per le coordinate x, z
     public int getSurfaceHeight(int x, int z) {
+        int scaledX = Math.floorDiv(x, (int) (1 / BLOCK_SIZE));
+        int scaledZ = Math.floorDiv(z, (int) (1 / BLOCK_SIZE));
+
         for (int y = HEIGHT - 1; y >= 0; y--) {
-            if (blocks[x][y][z] != Block.AIR) {
-                return y + 1;
+            if (blocks[scaledX][y][scaledZ] != Block.AIR) {
+                return (int) (y * World.BLOCK_SIZE) + 1; // Adatta all'altezza dei blocchi più piccoli
             }
         }
         return 0;
     }
+
 }
