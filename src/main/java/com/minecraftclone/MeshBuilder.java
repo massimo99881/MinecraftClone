@@ -33,29 +33,27 @@ public class MeshBuilder {
         addFaceBottom(x, y, z, color);
     }
 
-    // Qui puoi inserire gli altri metodi 'addFace...' come quelli che hai già, che aggiungono le singole facce al cubo.
-    
-    private void addFaceFront(int x, int y, int z, float[] color) {
+    public void addFaceFront(int x, int y, int z, float[] color) {
         addQuad(x, y, z+1, x+1, y, z+1, x+1, y+1, z+1, x, y+1, z+1, color);
     }
 
-    private void addFaceBack(int x, int y, int z, float[] color) {
+    public void addFaceBack(int x, int y, int z, float[] color) {
         addQuad(x+1, y, z, x, y, z, x, y+1, z, x+1, y+1, z, color);
     }
 
-    private void addFaceLeft(int x, int y, int z, float[] color) {
+    public void addFaceLeft(int x, int y, int z, float[] color) {
         addQuad(x, y, z, x, y, z+1, x, y+1, z+1, x, y+1, z, color);
     }
 
-    private void addFaceRight(int x, int y, int z, float[] color) {
+    public void addFaceRight(int x, int y, int z, float[] color) {
         addQuad(x+1, y, z+1, x+1, y, z, x+1, y+1, z, x+1, y+1, z+1, color);
     }
 
-    private void addFaceTop(int x, int y, int z, float[] color) {
+    public void addFaceTop(int x, int y, int z, float[] color) {
         addQuad(x, y+1, z+1, x+1, y+1, z+1, x+1, y+1, z, x, y+1, z, color);
     }
 
-    private void addFaceBottom(int x, int y, int z, float[] color) {
+    public void addFaceBottom(int x, int y, int z, float[] color) {
         addQuad(x, y, z, x+1, y, z, x+1, y, z+1, x, y, z+1, color);
     }
 
