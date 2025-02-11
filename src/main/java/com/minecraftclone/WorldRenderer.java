@@ -191,6 +191,26 @@ public class WorldRenderer {
         GL11.glDisable(GL11.GL_POLYGON_OFFSET_LINE);
     }
 
+    public void renderBlockHighlight(int bx, int by, int bz) {
+        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+        GL11.glDisable(GL11.GL_CULL_FACE);  // per vedere tutti i bordi
+
+        MeshBuilder builder = new MeshBuilder();
+        float[] yellow = {1.0f, 1.0f, 0.0f};
+        builder.addCubeWithColor(bx, by, bz, yellow);
+
+        Mesh highlightMesh = new Mesh();
+        highlightMesh.upload(builder);
+        highlightMesh.render();
+
+        highlightMesh.cleanUp();
+
+        // Ripristina stato
+        GL11.glEnable(GL11.GL_CULL_FACE);
+        GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+    }
+
+    
     public void cleanup() {
         fillMesh.cleanUp();
         outlineMesh_Dirt.cleanUp();

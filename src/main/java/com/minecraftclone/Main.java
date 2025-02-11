@@ -137,22 +137,23 @@ public class Main {
             GL11.glLoadIdentity();
 
             // 1) Aggiorno input & camera
-            camera.updateInput(window, world);
+            camera.updateInput(window);
             camera.applyTransformations();
 
             // 2) Render del mondo
             atlas.bind();
             worldRenderer.render();
+            atlas.unbind();
 
-            // 3) Se siamo in placingBlockMode, disegna il blocco di anteprima
-            if (camera.placingBlockMode) {
-                worldRenderer.renderBlockPreview(
-                    camera.targetX, 
-                    camera.targetY, 
-                    camera.targetZ
+         // Se stiamo selezionando un blocco, mostriamo il wireframe
+            if (camera.isSelectingBlockMode()) {
+                worldRenderer.renderBlockHighlight(
+                    camera.getSelectedBlockX(),
+                    camera.getSelectedBlockY(),
+                    camera.getSelectedBlockZ()
                 );
             }
-            atlas.unbind();
+            
 
             GLFW.glfwSwapBuffers(window);
             GLFW.glfwPollEvents();
