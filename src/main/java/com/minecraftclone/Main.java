@@ -105,12 +105,13 @@ public class Main {
         System.out.println("🔄 Creazione del renderer del mondo...");
         worldRenderer = new WorldRenderer(world);
 
-        float startX = 30.844f, startZ = 15.284f;
-        //int startY = Math.max(2, world.getSurfaceHeight(startX, startZ) + 2);
-        float startY = 4.589f;// world.getSurfaceHeight(startX, startZ);
+        float startX = World.SIZE_X / 2;
+        float startZ = World.SIZE_Z / 2;
+        int surfaceHeight = world.getSurfaceHeight((int) startX, (int) startZ);
+        float startY = (surfaceHeight + 2) * World.BLOCK_SIZE; // Margine extra
 
         System.out.println("📸 Telecamera inizializzata a: (" + startX + ", " + startY + ", " + startZ + ")");
-        camera = new Camera(7.502067f, 1.80898f, 8.9692f);
+        camera = new Camera(5.0622487f, 0.90898085f, 6.301544f);
     }
 
     private void connectToServer() {

@@ -7,7 +7,7 @@ public class World {
     public static final int SIZE_X = 128;
     public static final int SIZE_Z = 128;
     public static final int HEIGHT = 64;
-    public static final float BLOCK_SIZE = 0.1f;
+    public static final float BLOCK_SIZE = 0.05f;
 
     private Block[][][] blocks;
     private OpenSimplexNoise noiseGenerator;

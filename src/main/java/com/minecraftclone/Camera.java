@@ -101,15 +101,15 @@ public class Camera {
 
 
     private boolean collides(float nx, float ny, float nz, World world) {
-        // Aumenta la precisione del controllo collisioni
-        float step = World.BLOCK_SIZE / 4;  // Più efficiente di /100 ma sufficiente
-        
-        // Controlla solo i bordi della hitbox per prestazioni
-        return checkCollision(nx, ny, nz, world) || 
+        float step = World.BLOCK_SIZE / 2;  // Precisione aumentata
+
+        return checkCollision(nx, ny, nz, world) ||
                checkCollision(nx + WIDTH, ny, nz, world) ||
                checkCollision(nx, ny + HEIGHT, nz, world) ||
-               checkCollision(nx, ny, nz + DEPTH, world);
+               checkCollision(nx, ny, nz + DEPTH, world) ||
+               checkCollision(nx + WIDTH, ny + HEIGHT, nz + DEPTH, world);
     }
+
 
     private boolean checkCollision(float x, float y, float z, World world) {
         int blockX = (int) Math.floor(x / World.BLOCK_SIZE);
