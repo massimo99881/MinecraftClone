@@ -253,26 +253,28 @@ public class Camera {
      * Usiamo 8 “angoli” della hitbox (COLLISION_WIDTH/2 x COLLISION_HEIGHT) per verificare.
      */
     private boolean collidesWithBlocks(float nx, float ny, float nz) {
-        // Estremi bounding box
         float halfW = COLLISION_WIDTH / 2f;
         float topY  = ny + COLLISION_HEIGHT;
 
-        // Angoli (x±halfW, y e topY, z±halfW)
-        float[] cornerXs = { nx - halfW, nx + halfW };
-        float[] cornerYs = { ny, topY };
-        float[] cornerZs = { nz - halfW, nz + halfW };
+        // Invece di cornerXs, cornerZs con due soli valori, usiamo 3 valori: -halfW, 0, +halfW
+        float[] checkX = { nx - halfW, nx, nx + halfW };
+        float[] checkY = { ny, topY };
+        float[] checkZ = { nz - halfW, nz, nz + halfW };
 
-        for (float cx : cornerXs) {
-            for (float cy : cornerYs) {
-                for (float cz : cornerZs) {
+        // Ora facciamo un triplo for su questi array
+        for (float cx : checkX) {
+            for (float cy : checkY) {
+                for (float cz : checkZ) {
                     if (isSolidBlockAt(cx, cy, cz)) {
-                        return true; // c’è collisione
+                        return true;  // c’è collisione
                     }
                 }
             }
         }
-        return false;
+
+        return false; // Nessuna collisione trovata
     }
+
     
     private boolean isSolidBlockAt(float wx, float wy, float wz) {
         int bx = (int)Math.floor(wx / World.BLOCK_SIZE);
