@@ -9,9 +9,9 @@ public class Camera {
     private float pitch, yaw; // Rotazioni
     private float speed = 0.01f; // Velocità di movimento
     
-    private static final float WIDTH = 0.25f;
-    private static final float HEIGHT = 0.45f;
-    private static final float DEPTH = 0.25f;
+    private static final float WIDTH = 0.09f;
+    private static final float HEIGHT = 0.3f;
+    private static final float DEPTH = 0.09f;
 
     public Camera(float x, float y, float z) {
         this.x = x;
@@ -86,7 +86,7 @@ public class Camera {
             if (dy < 0) {
                 int surfaceHeight = world.getSurfaceHeight((int) Math.floor(newX / World.BLOCK_SIZE),
                                                            (int) Math.floor(newZ / World.BLOCK_SIZE));
-                float expectedY = surfaceHeight * World.BLOCK_SIZE + 0.1f; // Aggiungiamo un piccolo margine per evitare oscillazioni
+                float expectedY = surfaceHeight * World.BLOCK_SIZE - 0.1f; // Aggiungiamo un piccolo margine per evitare oscillazioni
 
                 if (y < expectedY) {
                     y = expectedY;
@@ -101,43 +101,28 @@ public class Camera {
 
 
     private boolean collides(float nx, float ny, float nz, World world) {
-        // Definiamo i bordi precisi della hitbox del giocatore
-        float minX = nx;
-        float maxX = nx + WIDTH;
-        float minY = ny;
-        float maxY = ny + HEIGHT;
-        float minZ = nz;
-        float maxZ = nz + DEPTH;
+        // Aumenta la precisione del controllo collisioni
+        float step = World.BLOCK_SIZE / 4;  // Più efficiente di /100 ma sufficiente
+        
+        // Controlla solo i bordi della hitbox per prestazioni
+        return checkCollision(nx, ny, nz, world) || 
+               checkCollision(nx + WIDTH, ny, nz, world) ||
+               checkCollision(nx, ny + HEIGHT, nz, world) ||
+               checkCollision(nx, ny, nz + DEPTH, world);
+    }
 
-        // Precisione più alta per il controllo collisioni
-        float step = World.BLOCK_SIZE / 100;
-
-        // Controllo collisione per il corpo intero
-        for (float x = minX; x <= maxX; x += step) {
-            for (float y = minY; y <= maxY; y += step) {
-                for (float z = minZ; z <= maxZ; z += step) {
-                    int blockX = (int) Math.floor(x / World.BLOCK_SIZE);
-                    int blockY = (int) Math.floor(y / World.BLOCK_SIZE);
-                    int blockZ = (int) Math.floor(z / World.BLOCK_SIZE);
-
-                    if (world.getBlock(blockX, blockY, blockZ).isSolid()) {
-                        System.out.println("❌ Collision at: " + blockX + ", " + blockY + ", " + blockZ);
-                        return true;
-                    }
-                }
-            }
-        }
-
-       
-
-        return false;
+    private boolean checkCollision(float x, float y, float z, World world) {
+        int blockX = (int) Math.floor(x / World.BLOCK_SIZE);
+        int blockY = (int) Math.floor(y / World.BLOCK_SIZE);
+        int blockZ = (int) Math.floor(z / World.BLOCK_SIZE);
+        
+        return world.getBlock(blockX, blockY, blockZ).isSolid();
     }
 
 
 
-
     public void applyTransformations() {
-        float cameraOffset = 0.2f; // Offset per alzare la telecamera
+        float cameraOffset = 0.1f; // Offset per alzare la telecamera
         GL11.glRotatef(pitch, 1, 0, 0);
         GL11.glRotatef(yaw, 0, 1, 0);
         GL11.glTranslatef(-x, -(y + cameraOffset), -z); // 🔥 Alziamo leggermente la Y

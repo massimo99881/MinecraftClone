@@ -7,7 +7,7 @@ public class World {
     public static final int SIZE_X = 128;
     public static final int SIZE_Z = 128;
     public static final int HEIGHT = 64;
-    public static final float BLOCK_SIZE = 0.25f; //0.025f;
+    public static final float BLOCK_SIZE = 0.1f;
 
     private Block[][][] blocks;
     private OpenSimplexNoise noiseGenerator;
@@ -173,16 +173,15 @@ public class World {
     }
 
     public int getSurfaceHeight(int x, int z) {
-//    	int scaledX = Math.floorDiv(x, (int) (1 / BLOCK_SIZE));
-//      int scaledZ = Math.floorDiv(z, (int) (1 / BLOCK_SIZE));
-
-        int scaledX = Math.min(SIZE_X - 1, Math.max(0, (int) (x / BLOCK_SIZE)));
-        int scaledZ = Math.min(SIZE_Z - 1, Math.max(0, (int) (z / BLOCK_SIZE)));
+        int scaledX = (int) (x / BLOCK_SIZE);
+        int scaledZ = (int) (z / BLOCK_SIZE);
+        
+        scaledX = Math.max(0, Math.min(SIZE_X - 1, scaledX));
+        scaledZ = Math.max(0, Math.min(SIZE_Z - 1, scaledZ));
 
         for (int y = HEIGHT - 1; y >= 0; y--) {
             if (blocks[scaledX][y][scaledZ] != Block.AIR) {
-                return y + 1;
-                //return (int) (y * World.BLOCK_SIZE) + 1; // Adatta all'altezza dei blocchi più piccoli
+                return y;
             }
         }
         return 0;

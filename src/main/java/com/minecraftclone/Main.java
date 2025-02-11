@@ -110,7 +110,7 @@ public class Main {
         float startY = 4.589f;// world.getSurfaceHeight(startX, startZ);
 
         System.out.println("📸 Telecamera inizializzata a: (" + startX + ", " + startY + ", " + startZ + ")");
-        camera = new Camera(startX, startY, startZ);
+        camera = new Camera(7.502067f, 1.80898f, 8.9692f);
     }
 
     private void connectToServer() {
