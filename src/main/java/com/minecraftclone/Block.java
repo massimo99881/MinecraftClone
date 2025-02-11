@@ -18,7 +18,7 @@ public class Block {
     public static final Block WATER  = new Block("WATER", false, new float[]{0.0f, 0.7f, 1.0f});  // Azzurro (laghi)
     public static final Block TRUNK  = new Block("TRUNK", true, new float[]{0.8f, 0.7f, 0.5f});   // Marrone chiaro (tronchi)
     public static final Block LEAVES = new Block("LEAVES", true, new float[]{0.0f, 0.8f, 0.0f});   // Verde (foglie)
-    public static final Block GRAY_BLOCK = new Block("GRAY_BLOCK", true, new float[]{0.5f, 0.5f, 0.5f}); // Grigio
+    public static final Block GRAY_BLOCK = new Block("GRAY_BLOCK", true, new float[]{0.5f, 0.5f, 0.5f});
 
     
     public Block(String name, boolean solid, float[] color) {
