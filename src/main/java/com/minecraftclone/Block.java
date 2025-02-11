@@ -20,6 +20,7 @@ public class Block {
     public static final Block LEAVES = new Block("LEAVES", true, new float[]{0.0f, 0.8f, 0.0f});   // Verde (foglie)
     public static final Block GRAY_BLOCK = new Block("GRAY_BLOCK", true, new float[]{0.5f, 0.5f, 0.5f});
 
+
     
     public Block(String name, boolean solid, float[] color) {
         this.name = name;

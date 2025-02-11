@@ -78,8 +78,8 @@ public class Main {
 
         float fov = 70.0f;
         float aspectRatio = (float) 800 / 600;
-        float near = 0.1f;
-        float far  = 1000.0f;
+        float near = 0.05f;
+        float far  = 1000.0f; 
 
         Matrix4f projectionMatrix = new Matrix4f()
                 .perspective((float)Math.toRadians(fov), aspectRatio, near, far);
@@ -133,20 +133,20 @@ public class Main {
         GL11.glEnable(GL11.GL_CULL_FACE);
 
         while (!GLFW.glfwWindowShouldClose(window)) {
-            // Pulizia schermo
             GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
             GL11.glLoadIdentity();
 
-            // 1) Aggiorna input e applica trasformazioni camera
+            // 1) Gestisci input camera
             camera.updateInput(window);
+            // 2) Applica trasformazioni
             camera.applyTransformations();
 
-            // 2) Disegno del mondo
+            // 3) Disegno mondo
             atlas.bind();
             worldRenderer.render();
             atlas.unbind();
 
-            // 3) Se la camera è in modalità selezione, disegniamo un cubo giallo sul blocco selezionato
+            // 4) Se in modalità B, highlight giallo
             if (camera.isSelectingBlockMode()) {
                 worldRenderer.renderBlockHighlight(
                     camera.getSelectedBlockX(),
@@ -155,16 +155,16 @@ public class Main {
                 );
             }
 
-            // 4) Swap buffer e poll eventi
+            // Swap buffer & poll events
             GLFW.glfwSwapBuffers(window);
             GLFW.glfwPollEvents();
 
-            // 5) ~60 FPS
-            try {
-                Thread.sleep(16);
-            } catch (InterruptedException e) {}
+            // ~60 fps
+            try { Thread.sleep(16); } catch (InterruptedException e) {}
         }
     }
+
+
 
 
 

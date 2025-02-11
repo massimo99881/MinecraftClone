@@ -141,11 +141,13 @@ public class WorldRenderer {
      * Render finale: disegna prima i fill, poi le outline
      */
     public void render() {
+        // 1) Disegno delle “facce piene”
         fillMesh.render();
 
+        // 2) Disegno outline (con polygon offset)
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_LINE);
-        GL11.glPolygonOffset(-1.0f, -1.0f);
-
+        //GL11.glPolygonOffset(-1.0f, -1.0f);
+        GL11.glPolygonOffset(-0.1f, -0.1f);
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
         GL11.glLineWidth(1.0f);
 
@@ -154,7 +156,7 @@ public class WorldRenderer {
         outlineMesh_Water.render();
         outlineMesh_Trunk.render();
         outlineMesh_Leaves.render();
-        outlineMesh_Gray.render();
+        outlineMesh_Gray.render(); // contorno nero per i blocchi grigi
 
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
         GL11.glDisable(GL11.GL_POLYGON_OFFSET_LINE);
@@ -166,7 +168,7 @@ public class WorldRenderer {
      */
     public void renderBlockHighlight(int bx, int by, int bz) {
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
-        GL11.glDisable(GL11.GL_CULL_FACE);  // per vedere tutti i bordi
+        GL11.glDisable(GL11.GL_CULL_FACE); // per vedere i bordi “dietro”
 
         MeshBuilder builder = new MeshBuilder();
         float[] yellow = {1.0f, 1.0f, 0.0f};
