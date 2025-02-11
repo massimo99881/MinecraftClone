@@ -151,7 +151,7 @@ public class WorldRenderer {
 	    GL11.glPolygonOffset(-1.0f, -1.0f); // Regola questi valori se necessario
 
 	    GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
-	    GL11.glLineWidth(1.0f);
+	    GL11.glLineWidth(0.7f);
 
 	    outlineMesh_Dirt.render();
 	    outlineMesh_Grass.render();

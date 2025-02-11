@@ -111,7 +111,7 @@ public class Main {
         float startY = (surfaceHeight + 2) * World.BLOCK_SIZE; // Margine extra
 
         System.out.println("📸 Telecamera inizializzata a: (" + startX + ", " + startY + ", " + startZ + ")");
-        camera = new Camera(5.0622487f, 0.90898085f, 6.301544f);
+        camera = new Camera(3.1578202f, 0.5489812f, 2.835f);
     }
 
     private void connectToServer() {
