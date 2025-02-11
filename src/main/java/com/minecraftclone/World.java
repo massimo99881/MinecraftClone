@@ -62,6 +62,13 @@ public class World {
         System.out.println("🌊 Generazione Laghi...");
         //createLakes();
     }
+    
+    public void setBlock(int x, int y, int z, Block block) {
+        if (x >= 0 && x < SIZE_X && y >= 0 && y < HEIGHT && z >= 0 && z < SIZE_Z) {
+            blocks[x][y][z] = block;
+        }
+    }
+
 
     private void createLakes() {
         int numLakes = 1; // Numero di laghi aumentato

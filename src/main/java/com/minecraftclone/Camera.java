@@ -5,22 +5,55 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 
 public class Camera {
-    private float x, y, z;  // Posizione della camera
-    private float pitch, yaw; // Rotazioni
-    private float speed = 0.01f; // Velocità di movimento
+    private float x, y, z;  // Posizione in coordinate mondo
+    private float pitch, yaw;
+    private float speed = 0.01f;
     
     private static final float WIDTH = 0.09f;
     private static final float HEIGHT = 0.3f;
     private static final float DEPTH = 0.09f;
 
-    public Camera(float x, float y, float z) {
+    boolean placingBlockMode = false;  // Se attivo, mostriamo anteprima di blocco
+    float targetX;   // Coordinate (in INDICI blocco) dell'anteprima
+	float targetY;
+	float targetZ;
+    private World world;
+    private WorldRenderer worldRenderer;
+
+    // Variabile per gestire il toggle di B
+    private boolean bKeyWasPressed = false; // <-- MOD
+
+    public Camera(float x, float y, float z, World world, WorldRenderer wr) {
         this.x = x;
         this.y = y;
         this.z = z;
+        this.world = world;
+        this.worldRenderer = wr;
     }
 
     public void updateInput(long window, World world) {
         float dx = 0, dy = 0, dz = 0;
+
+        // --- LOGICA DI ATTIVAZIONE con Toggle su B ---
+        boolean bKeyPressed = (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_B) == GLFW.GLFW_PRESS);
+        if (bKeyPressed && !bKeyWasPressed) {
+            placingBlockMode = !placingBlockMode;
+            if (placingBlockMode) {
+                updateBlockPreview();
+                System.out.println("🟨 Modalità posizionamento blocco: ON (B premuto)");
+            } else {
+                System.out.println("🟨 Modalità posizionamento blocco: OFF (B premuto)");
+            }
+        }
+        bKeyWasPressed = bKeyPressed;
+        // --- Fine toggle B ---
+
+        // Conferma del posizionamento (ENTER)
+        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_ENTER) == GLFW.GLFW_PRESS && placingBlockMode) {
+            placeBlock();
+            // Annulliamo la modalità dopo il posizionamento:
+            placingBlockMode = false; 
+        }
 
         // Movimenti orizzontali (WASD)
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS) {
@@ -62,12 +95,52 @@ public class Camera {
             yaw += 1.0f;
         }
 
-        // Controlliamo se la nuova posizione collide con il terreno
+        // Controlli collisioni e muovi la camera
         attemptMove(dx, 0, 0, world);
         attemptMove(0, dy, 0, world);
         attemptMove(0, 0, dz, world);
+    }
+    
+    /**
+     * Calcola la posizione "in avanti" della camera, trova la superficie del terreno
+     * e stabilisce dove far apparire il blocco di anteprima.
+     */
+    private void updateBlockPreview() {
+        // lookX, lookZ in coordinate MONDO (float)
+        float lookX = x + (float) Math.sin(Math.toRadians(yaw)) * 1.5f;
+        float lookZ = z - (float) Math.cos(Math.toRadians(yaw)) * 1.5f;
+        
+        // Ottieni l'altezza del terreno (metodo vuole parametri in blocchi o in mondo?)
+        // La firma dice: getSurfaceHeight(int x, int z) ma all'interno del World
+        // c'è un ulteriore divisione per BLOCK_SIZE. Quindi qui passiamo "mondo" in int.
+        int groundY = world.getSurfaceHeight((int) lookX, (int) lookZ);
+        
+        // targetX, Y, Z in INDICI di blocco
+        targetX = (int) (lookX / World.BLOCK_SIZE);
+        targetY = groundY + 1;  
+        targetZ = (int) (lookZ / World.BLOCK_SIZE);
 
-        System.out.println("📸 Posizione telecamera: (" + x + ", " + y + ", " + z + ")");
+        System.out.println("🔎 Anteprima posizionata su: ("
+                            + (int)targetX + ", " 
+                            + (int)targetY + ", " 
+                            + (int)targetZ + ")");
+    }
+    
+    /**
+     * Piazza il blocco grigio nella posizione calcolata da updateBlockPreview().
+     */
+    private void placeBlock() {
+        int bx = (int) targetX;
+        int by = (int) targetY;
+        int bz = (int) targetZ;
+
+        if (world.getBlock(bx, by, bz) == Block.AIR) {
+            world.setBlock(bx, by, bz, Block.GRAY_BLOCK);
+            System.out.println("🧱 Blocco GRIGIO posizionato in ("+bx+", "+by+", "+bz+")");
+            worldRenderer.rebuildMeshes();
+        } else {
+            System.out.println("❌ Spazio già occupato! Blocco non posizionato.");
+        }
     }
 
     private void attemptMove(float dx, float dy, float dz, World world) {
@@ -82,27 +155,25 @@ public class Camera {
             y = newY;
             z = newZ;
         } else {
-            // 🔥 **Nuovo controllo: evita il sinking sotto il terreno**
+            // Se è collisione verso il basso, verifichiamo se stiamo sprofondando
             if (dy < 0) {
-                int surfaceHeight = world.getSurfaceHeight((int) Math.floor(newX / World.BLOCK_SIZE),
-                                                           (int) Math.floor(newZ / World.BLOCK_SIZE));
-                float expectedY = surfaceHeight * World.BLOCK_SIZE - 0.1f; // Aggiungiamo un piccolo margine per evitare oscillazioni
-
+                int surfaceHeight = world.getSurfaceHeight(
+                        (int) Math.floor(newX / World.BLOCK_SIZE),
+                        (int) Math.floor(newZ / World.BLOCK_SIZE));
+                
+                float expectedY = surfaceHeight * World.BLOCK_SIZE - 0.1f;
                 if (y < expectedY) {
                     y = expectedY;
                     System.out.println("🚨 Telecamera riallineata alla superficie del terreno!");
                 } else {
-                    y = oldY; // Se la collisione è contro una parete o altro, ripristiniamo la posizione precedente
+                    y = oldY;
                 }
             }
         }
     }
 
-
-
     private boolean collides(float nx, float ny, float nz, World world) {
-        float step = World.BLOCK_SIZE / 2;  // Precisione aumentata
-
+        // Controllo semplificato a 5 punti
         return checkCollision(nx, ny, nz, world) ||
                checkCollision(nx + WIDTH, ny, nz, world) ||
                checkCollision(nx, ny + HEIGHT, nz, world) ||
@@ -110,24 +181,23 @@ public class Camera {
                checkCollision(nx + WIDTH, ny + HEIGHT, nz + DEPTH, world);
     }
 
-
     private boolean checkCollision(float x, float y, float z, World world) {
         int blockX = (int) Math.floor(x / World.BLOCK_SIZE);
         int blockY = (int) Math.floor(y / World.BLOCK_SIZE);
         int blockZ = (int) Math.floor(z / World.BLOCK_SIZE);
-        
+
         return world.getBlock(blockX, blockY, blockZ).isSolid();
     }
 
-
-
+    /**
+     * Applica rotazioni e traslazioni OpenGL in base a pitch,yaw e (x,y,z) della camera.
+     */
     public void applyTransformations() {
-        float cameraOffset = 0.1f; // Offset per alzare la telecamera
+        float cameraOffset = 0.1f; 
         GL11.glRotatef(pitch, 1, 0, 0);
-        GL11.glRotatef(yaw, 0, 1, 0);
-        GL11.glTranslatef(-x, -(y + cameraOffset), -z); // 🔥 Alziamo leggermente la Y
+        GL11.glRotatef(yaw,   0, 1, 0);
+        GL11.glTranslatef(-x, -(y + cameraOffset), -z);
     }
-
 
     public float getX() { return x; }
     public float getY() { return y; }

@@ -9,7 +9,7 @@ import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
 
 public class Main {
-    private long window; // ID della finestra GLFW
+    private long window; 
     private boolean isServer;
     private TextureAtlas atlas;
     private WorldRenderer worldRenderer;
@@ -38,11 +38,10 @@ public class Main {
     }
 
     private void runClient() {
-        initWindow();  // Inizializza la finestra OpenGL
-        initScene();   // Carica le risorse (mondo, texture, mesh)
-        connectToServer(); // Connessione al server
-        loop();        // Avvia il loop di rendering
-
+        initWindow();  
+        initScene();   
+        connectToServer();
+        loop();        
         GLFW.glfwDestroyWindow(window);
         GLFW.glfwTerminate();
     }
@@ -62,26 +61,28 @@ public class Main {
         }
 
         GLFWVidMode vidMode = GLFW.glfwGetVideoMode(GLFW.glfwGetPrimaryMonitor());
-        GLFW.glfwSetWindowPos(window, (vidMode.width() - 800) / 2, (vidMode.height() - 600) / 2);
+        GLFW.glfwSetWindowPos(window, 
+            (vidMode.width() - 800) / 2, 
+            (vidMode.height() - 600) / 2);
 
         GLFW.glfwMakeContextCurrent(window);
         GL.createCapabilities();
 
-        // Imposta il texture environment in MODULATE
         GL11.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_MODULATE);
 
         System.out.println("✅ OpenGL inizializzato correttamente.");
 
-        // Imposta la matrice di proiezione con JOML
+        // Imposta la matrice di proiezione
         GL11.glMatrixMode(GL11.GL_PROJECTION);
         GL11.glLoadIdentity();
 
         float fov = 70.0f;
         float aspectRatio = (float) 800 / 600;
         float near = 0.1f;
-        float far = 1000.0f;
+        float far  = 1000.0f;
 
-        Matrix4f projectionMatrix = new Matrix4f().perspective((float) Math.toRadians(fov), aspectRatio, near, far);
+        Matrix4f projectionMatrix = new Matrix4f()
+                .perspective((float)Math.toRadians(fov), aspectRatio, near, far);
         FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
         projectionMatrix.get(buffer);
         GL11.glLoadMatrixf(buffer);
@@ -89,7 +90,6 @@ public class Main {
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glLoadIdentity();
 
-        // Imposta lo sfondo ad azzurro
         GL11.glClearColor(0.5f, 0.7f, 1.0f, 1.0f);
 
         GLFW.glfwShowWindow(window);
@@ -105,13 +105,18 @@ public class Main {
         System.out.println("🔄 Creazione del renderer del mondo...");
         worldRenderer = new WorldRenderer(world);
 
-        float startX = World.SIZE_X / 2;
-        float startZ = World.SIZE_Z / 2;
-        int surfaceHeight = world.getSurfaceHeight((int) startX, (int) startZ);
-        float startY = (surfaceHeight + 2) * World.BLOCK_SIZE; // Margine extra
+        // Calcolo posizione iniziale della camera
+        float startX = World.SIZE_X / 2 * World.BLOCK_SIZE; // Centra in X
+        float startZ = World.SIZE_Z / 2 * World.BLOCK_SIZE; // Centra in Z
+        int surfaceHeight = world.getSurfaceHeight(
+                (int)(startX), 
+                (int)(startZ));
+        float startY = (surfaceHeight + 2) * World.BLOCK_SIZE;
 
-        System.out.println("📸 Telecamera inizializzata a: (" + startX + ", " + startY + ", " + startZ + ")");
-        camera = new Camera(3.1578202f, 0.5489812f, 2.835f);
+        System.out.println("📸 Telecamera inizializzata a: " 
+            + startX + ", " + startY + ", " + startZ);
+
+        camera = new Camera(startX, startY, startZ, world, worldRenderer);
     }
 
     private void connectToServer() {
@@ -124,29 +129,37 @@ public class Main {
     }
 
     private void loop() {
-        GL11.glEnable(GL11.GL_DEPTH_TEST); // Attiva il depth test per il rendering 3D
-        GL11.glEnable(GL11.GL_CULL_FACE); // Ottimizzazione: nasconde facce non visibili
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        GL11.glEnable(GL11.GL_CULL_FACE);
 
         while (!GLFW.glfwWindowShouldClose(window)) {
             GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
             GL11.glLoadIdentity();
 
-            // Gestione della telecamera
+            // 1) Aggiorno input & camera
             camera.updateInput(window, world);
             camera.applyTransformations();
 
-            System.out.println("📸 Posizione telecamera: (" + camera.getX() + ", " + camera.getY() + ", " + camera.getZ() + ")");
-
-            // Render del mondo
+            // 2) Render del mondo
             atlas.bind();
             worldRenderer.render();
+
+            // 3) Se siamo in placingBlockMode, disegna il blocco di anteprima
+            if (camera.placingBlockMode) {
+                worldRenderer.renderBlockPreview(
+                    camera.targetX, 
+                    camera.targetY, 
+                    camera.targetZ
+                );
+            }
             atlas.unbind();
 
             GLFW.glfwSwapBuffers(window);
             GLFW.glfwPollEvents();
 
+            // ~60 FPS
             try {
-                Thread.sleep(16); // Circa 60 FPS
+                Thread.sleep(16);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
