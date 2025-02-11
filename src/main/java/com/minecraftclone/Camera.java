@@ -4,8 +4,8 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 
 public class Camera {
-    private float x, y, z;      // Posizione camera (coordinate mondo)
-    private float pitch, yaw;   // Rotazioni camera
+    private float x, y, z;    // Posizione (mondo)
+    private float pitch, yaw; // Rotazioni
     private float speed = 0.01f;
 
     private World world;
@@ -15,7 +15,7 @@ public class Camera {
     private boolean selectingBlockMode = false;
     private int selectedBlockX, selectedBlockY, selectedBlockZ;
 
-    // Toggle B
+    // Toggle tasto B
     private boolean wasBPressedLastFrame = false;
 
     public Camera(float x, float y, float z, World world, WorldRenderer worldRenderer) {
@@ -26,16 +26,13 @@ public class Camera {
         this.worldRenderer = worldRenderer;
     }
 
-    /**
-     * Invocata ad ogni frame per controllare input.
-     */
     public void updateInput(long window) {
-        // 1. Gestione tasto B (toggle)
         boolean isBPressed = (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_B) == GLFW.GLFW_PRESS);
         if (isBPressed && !wasBPressedLastFrame) {
             selectingBlockMode = !selectingBlockMode;
             if (selectingBlockMode) {
-                selectBlockInFront(); // individua il blocco di fronte
+                // Appena entro in selezione, individuo il TERZO blocco davanti alla camera
+                selectBlockInFrontOfCamera();
                 System.out.println("** Modalità selezione: ON **");
             } else {
                 System.out.println("** Modalità selezione: OFF **");
@@ -43,18 +40,15 @@ public class Camera {
         }
         wasBPressedLastFrame = isBPressed;
 
-        // 2. Se non sei in selezione, le frecce ruotano la camera,
-        //    WASD e SPACE/SHIFT muovono la camera.
-        //    Se sei in selezione, le frecce spostano la selezione.
         if (!selectingBlockMode) {
+            // Comportamento standard: WASD per muoversi, frecce per ruotare
             handleCameraMovement(window);
             handleCameraRotation(window);
         } else {
+            // Selezione blocchi con le frecce (avanti/indietro = ±1 nella direzione del yaw, ecc.)
             handleSelectionMovement(window);
-        }
 
-        // 3. Invio => piazza blocco sopra quello selezionato (solo in modalità selezione)
-        if (selectingBlockMode) {
+            // ENTER => piazza blocco grigio
             if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_ENTER) == GLFW.GLFW_PRESS) {
                 placeBlockAboveSelection();
             }
@@ -62,8 +56,30 @@ public class Camera {
     }
 
     /**
-     * Movimenti della camera: WASD, SPACE, SHIFT.
+     * Quando entriamo in modalità selezione, puntiamo al 3° blocco davanti alla camera
      */
+    private void selectBlockInFrontOfCamera() {
+        // 3 blocchi davanti, in base a BLOCK_SIZE
+        int blocksAhead = 3;
+        float dist = blocksAhead * World.BLOCK_SIZE;
+
+        float frontX = x + (float)Math.sin(Math.toRadians(yaw)) * dist;
+        float frontZ = z - (float)Math.cos(Math.toRadians(yaw)) * dist;
+
+        int bx = (int)(frontX / World.BLOCK_SIZE);
+        int bz = (int)(frontZ / World.BLOCK_SIZE);
+
+        int surfaceY = world.getSurfaceHeight(bx, bz);
+
+        selectedBlockX = bx;
+        selectedBlockY = surfaceY;
+        selectedBlockZ = bz;
+        clampSelection();
+
+        System.out.println("Blocco iniziale selezionato: (" 
+            + selectedBlockX + ", " + selectedBlockY + ", " + selectedBlockZ + ")");
+    }
+
     private void handleCameraMovement(long window) {
         float dx = 0, dy = 0, dz = 0;
 
@@ -96,10 +112,6 @@ public class Camera {
         attemptMove(0, 0, dz);
     }
 
-    /**
-     * Rotazioni con le frecce direzionali.
-     * (Solo quando NON siamo in selezione!)
-     */
     private void handleCameraRotation(long window) {
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_UP) == GLFW.GLFW_PRESS) {
             pitch -= 1.0f;
@@ -116,52 +128,59 @@ public class Camera {
     }
 
     /**
-     * Se siamo in modalità selezione, le frecce spostano la selezione
-     * (±1 in X / Z). Usiamo un piccolo "debounce" (sleep) per non scorrere
-     * troppo velocemente i blocchi.
+     * Se siamo in selezione, le frecce spostano la selezione
+     * in base al yaw (avanti/indietro, sinistra/destra).
      */
     private void handleSelectionMovement(long window) {
-        // Freccia UP => z--
+        float radYaw = (float)Math.toRadians(yaw);
+
+        // Avanti
+        int forwardDX = Math.round((float)Math.sin(radYaw));
+        int forwardDZ = Math.round((float)-Math.cos(radYaw));
+
+        // Sinistra (yaw - 90°)
+        float radYawLeft = (float)Math.toRadians(yaw - 90.0f);
+        int leftDX = Math.round((float)Math.sin(radYawLeft));
+        int leftDZ = Math.round((float)-Math.cos(radYawLeft));
+
+        // Freccia UP => selezione avanti
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_UP) == GLFW.GLFW_PRESS) {
-            selectedBlockZ--;
+            selectedBlockX += forwardDX;
+            selectedBlockZ += forwardDZ;
             clampSelection();
-            System.out.println("Selezione: ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
+            System.out.println("Selezione => ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
             sleep50ms();
         }
-        // Freccia DOWN => z++
+        // Freccia DOWN => selezione indietro
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_DOWN) == GLFW.GLFW_PRESS) {
-            selectedBlockZ++;
+            selectedBlockX -= forwardDX;
+            selectedBlockZ -= forwardDZ;
             clampSelection();
-            System.out.println("Selezione: ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
+            System.out.println("Selezione => ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
             sleep50ms();
         }
-        // Freccia LEFT => x--
+        // Freccia LEFT => selezione a sinistra
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT) == GLFW.GLFW_PRESS) {
-            selectedBlockX--;
+            selectedBlockX += leftDX;
+            selectedBlockZ += leftDZ;
             clampSelection();
-            System.out.println("Selezione: ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
+            System.out.println("Selezione => ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
             sleep50ms();
         }
-        // Freccia RIGHT => x++
+        // Freccia RIGHT => selezione a destra
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT) == GLFW.GLFW_PRESS) {
-            selectedBlockX++;
+            selectedBlockX -= leftDX;
+            selectedBlockZ -= leftDZ;
             clampSelection();
-            System.out.println("Selezione: ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
+            System.out.println("Selezione => ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
             sleep50ms();
         }
     }
 
     private void sleep50ms() {
-        try {
-            Thread.sleep(50);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        try { Thread.sleep(50); } catch (InterruptedException e) {}
     }
 
-    /**
-     * Limita la selezione entro i confini del mondo.
-     */
     private void clampSelection() {
         if (selectedBlockX < 0) selectedBlockX = 0;
         if (selectedBlockX >= World.SIZE_X) selectedBlockX = World.SIZE_X - 1;
@@ -172,28 +191,7 @@ public class Camera {
     }
 
     /**
-     * Individua il blocco “frontalmente” alla camera
-     * e lo seleziona come “blocco attuale”.
-     */
-    private void selectBlockInFront() {
-        float dist = 2.0f; // ad es. 2 metri davanti
-        float frontX = x + (float)Math.sin(Math.toRadians(yaw)) * dist;
-        float frontZ = z - (float)Math.cos(Math.toRadians(yaw)) * dist;
-
-        int bx = (int)(frontX / World.BLOCK_SIZE);
-        int bz = (int)(frontZ / World.BLOCK_SIZE);
-        int surfaceY = world.getSurfaceHeight(bx, bz);
-
-        selectedBlockX = bx;
-        selectedBlockY = surfaceY;
-        selectedBlockZ = bz;
-        clampSelection();
-
-        System.out.println("Blocco iniziale selezionato: ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
-    }
-
-    /**
-     * Piazza il blocco grigio SOPRA il blocco selezionato
+     * Posiziona il blocco GRIGIO sopra il blocco selezionato
      * e ricostruisce la mesh.
      */
     private void placeBlockAboveSelection() {
@@ -204,9 +202,9 @@ public class Camera {
         if (world.getBlock(bx, by, bz) == Block.AIR) {
             world.setBlock(bx, by, bz, Block.GRAY_BLOCK);
             worldRenderer.rebuildMeshes();
-            System.out.println("Blocco GRIGIO posizionato in: ("+bx+", "+by+", "+bz+")");
+            System.out.println("🧱 Blocco GRIGIO in ("+bx+", "+by+", "+bz+")");
         } else {
-            System.out.println("❌ Non posso piazzare sopra ("+bx+", "+by+", "+bz+"): non è aria.");
+            System.out.println("❌ Non posso piazzare sopra: ("+bx+", "+by+", "+bz+"): non è aria.");
         }
     }
 
@@ -214,7 +212,6 @@ public class Camera {
         float newX = x + dx;
         float newY = y + dy;
         float newZ = z + dz;
-
         if (!isColliding(newX, newY, newZ)) {
             x = newX;
             y = newY;
@@ -236,16 +233,14 @@ public class Camera {
     }
 
     public void applyTransformations() {
-        float cameraOffset = 0.1f;
         GL11.glRotatef(pitch, 1, 0, 0);
         GL11.glRotatef(yaw,   0, 1, 0);
-        GL11.glTranslatef(-x, -(y + cameraOffset), -z);
+        // Aggiungiamo un piccolo offset in y
+        GL11.glTranslatef(-x, -(y + 0.1f), -z);
     }
 
-    public boolean isSelectingBlockMode() {
-        return selectingBlockMode;
-    }
-
+    // Getter
+    public boolean isSelectingBlockMode() { return selectingBlockMode; }
     public int getSelectedBlockX() { return selectedBlockX; }
     public int getSelectedBlockY() { return selectedBlockY; }
     public int getSelectedBlockZ() { return selectedBlockZ; }

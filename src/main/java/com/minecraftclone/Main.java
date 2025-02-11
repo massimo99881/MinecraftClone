@@ -136,16 +136,17 @@ public class Main {
             GL11.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
             GL11.glLoadIdentity();
 
-            // 1) Aggiorno input & camera
+            // 1) Input
             camera.updateInput(window);
+            // 2) Applicazione trasformazioni
             camera.applyTransformations();
 
-            // 2) Render del mondo
+            // 3) Render del mondo
             atlas.bind();
             worldRenderer.render();
             atlas.unbind();
 
-         // Se stiamo selezionando un blocco, mostriamo il wireframe
+            // 4) Se in selezione, evidenzio in nero il blocco selezionato
             if (camera.isSelectingBlockMode()) {
                 worldRenderer.renderBlockHighlight(
                     camera.getSelectedBlockX(),
@@ -153,19 +154,15 @@ public class Main {
                     camera.getSelectedBlockZ()
                 );
             }
-            
 
             GLFW.glfwSwapBuffers(window);
             GLFW.glfwPollEvents();
 
             // ~60 FPS
-            try {
-                Thread.sleep(16);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            try { Thread.sleep(16); } catch (InterruptedException e) {}
         }
     }
+
 
     public static void main(String[] args) {
         boolean isServer = args.length > 0 && args[0].equalsIgnoreCase("server");

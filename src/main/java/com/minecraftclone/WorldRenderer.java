@@ -192,12 +192,13 @@ public class WorldRenderer {
     }
 
     public void renderBlockHighlight(int bx, int by, int bz) {
+        // Disegniamo un cubo wireframe
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
-        GL11.glDisable(GL11.GL_CULL_FACE);  // per vedere tutti i bordi
+        GL11.glDisable(GL11.GL_CULL_FACE); // per mostrare tutti i bordi
 
         MeshBuilder builder = new MeshBuilder();
-        float[] yellow = {1.0f, 1.0f, 0.0f};
-        builder.addCubeWithColor(bx, by, bz, yellow);
+        float[] black = {0f, 0f, 0f}; // colore nero
+        builder.addCubeWithColor(bx, by, bz, black);
 
         Mesh highlightMesh = new Mesh();
         highlightMesh.upload(builder);
@@ -205,10 +206,11 @@ public class WorldRenderer {
 
         highlightMesh.cleanUp();
 
-        // Ripristina stato
+        // Ripristino stato
         GL11.glEnable(GL11.GL_CULL_FACE);
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
     }
+
 
     
     public void cleanup() {
