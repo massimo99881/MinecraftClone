@@ -19,6 +19,13 @@
     <dependencies>
 		
 		<dependency>
+		    <groupId>com.fasterxml.jackson.core</groupId>
+		    <artifactId>jackson-databind</artifactId>
+		    <version>2.14.0</version> <!-- o altra versione -->
+		</dependency>
+
+		
+		<dependency>
 		    <groupId>local.libs</groupId>
 		    <artifactId>OpenSimplexNoise</artifactId>
 		    <version>1.0</version>

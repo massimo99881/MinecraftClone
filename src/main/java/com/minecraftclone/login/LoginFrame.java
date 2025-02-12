@@ -1,18 +1,14 @@
-package com.minecraftclone;
+package com.minecraftclone.login;
 
-import java.awt.FlowLayout;
-import java.io.UnsupportedEncodingException;
-
-import javax.swing.JButton;
-import javax.swing.JFrame;
-import javax.swing.JLabel;
-import javax.swing.JOptionPane;
-import javax.swing.JTextField;
+import javax.swing.*;
+import java.awt.*;
+import com.minecraftclone.network.MyApi;
+import com.minecraftclone.state.GameState;
 
 public class LoginFrame extends JFrame {
+
     private JTextField emailField;
     private JButton loginButton, registerButton;
-
     private boolean loginOk = false;
 
     public LoginFrame() {
@@ -29,7 +25,9 @@ public class LoginFrame extends JFrame {
         add(registerButton);
 
         loginButton.addActionListener(e -> doLogin());
-        registerButton.addActionListener(e -> new RegisterFrame().setVisible(true));
+        registerButton.addActionListener(e -> {
+            new RegisterFrame().setVisible(true);
+        });
 
         setSize(300, 120);
         setLocationRelativeTo(null);
@@ -43,19 +41,15 @@ public class LoginFrame extends JFrame {
             return;
         }
 
-        // Chiamata REST:
-        String result="";
-		try {
-			result = MyApi.login(email);
-		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} // "OK", "NOT_FOUND", "NOT_ACTIVE"
+        String result = MyApi.login(email);
         switch (result) {
             case "OK":
-                JOptionPane.showMessageDialog(this, "Login OK!");
                 loginOk = true;
-                dispose(); // chiudo la finestra
+                GameState.currentUserEmail = email;
+                // Notifica al WS che l'utente si è connesso
+                MyApi.connect(email);
+                JOptionPane.showMessageDialog(this, "Login OK!");
+                dispose();
                 break;
             case "NOT_FOUND":
                 JOptionPane.showMessageDialog(this, "Utente non presente nel database");
@@ -64,7 +58,7 @@ public class LoginFrame extends JFrame {
                 JOptionPane.showMessageDialog(this, "Utente non attivo");
                 break;
             default:
-                JOptionPane.showMessageDialog(this, "Errore generico: " + result);
+                JOptionPane.showMessageDialog(this, "Errore: " + result);
         }
     }
 
