@@ -65,8 +65,16 @@ public class MyApi {
             + "&placedBy=" + enc(placedBy);
         return doPost(url);
     }
+    
+    
 
     // HTTP METODI
+    public static String updatePosition(String email, float x, float y, float z) {
+        String url = BASE_URL + "/players/updatePos?email=" + enc(email)
+                   + "&x=" + x + "&y=" + y + "&z=" + z;
+        return doPost(url);
+    }
+
     private static String doGet(String urlStr) {
         try {
             URL url = new URL(urlStr);

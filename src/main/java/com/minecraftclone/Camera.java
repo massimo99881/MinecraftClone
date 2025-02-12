@@ -3,6 +3,9 @@ package com.minecraftclone;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 
+import com.minecraftclone.network.MyApi;
+import com.minecraftclone.state.GameState;
+
 public class Camera {
     private float x, y, z;       // Posizione (mondo)
     private float pitch, yaw;    // Rotazioni
@@ -19,6 +22,10 @@ public class Camera {
     private final float JUMP_VELOCITY = 1.0f * World.BLOCK_SIZE / 0.260f; 
     // 3 blocchi / (16ms) => vedi nota sotto per la logica
     // Se preferisci, puoi fare un salto istantaneo.
+    
+    private static final float POSITION_UPDATE_INTERVAL = 0.5f; 
+    private float timeSinceLastUpdate = 0f; 
+    // se vuoi inviare ~2 volte al secondo
 
     private World world;
     private WorldRenderer worldRenderer;
@@ -183,17 +190,28 @@ public class Camera {
      * Spostiamo la camera orizzontalmente, controllando collisione con 18 punti
      */
     private void attemptMove(float dx, float dy, float dz) {
-        if (dx == 0 && dy == 0 && dz == 0) return;
-
         float newX = x + dx;
-        float newY = y + dy; // di solito 0
+        float newY = y + dy;
         float newZ = z + dz;
 
         if (!collidesWithBlocks(newX, newY, newZ)) {
             x = newX;
             y = newY;
             z = newZ;
+
+            timeSinceLastUpdate += 0.016f; // se il loop ~60fps
+            if (timeSinceLastUpdate >= POSITION_UPDATE_INTERVAL) {
+                sendPositionToServer();
+                timeSinceLastUpdate = 0f;
+            }
         }
+    }
+    
+    private void sendPositionToServer() {
+        // Chiama MyApi.updatePosition(...) con x, y, z
+        // Nota: la x,y,z attuali della camera in coordinate “mondo”
+        // Se la webapp memorizza “blocchi” e non “metri”, potresti dover scalare.
+        MyApi.updatePosition(GameState.currentUserEmail, x, y, z);
     }
 
     /**
