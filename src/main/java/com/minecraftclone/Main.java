@@ -24,6 +24,25 @@ public class Main {
         if (isServer) {
             runServer();
         } else {
+        	
+        	
+        	// Mostra la finestra di login
+            LoginFrame loginFrame = new LoginFrame();
+            loginFrame.setVisible(true);
+
+            // Aspettiamo che la finestra si chiuda
+            while (loginFrame.isVisible()) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {}
+            }
+
+            // Se login ok => avviamo il gioco
+            if (!loginFrame.isLoginOk()) {
+                System.out.println("Login non riuscito. Esco.");
+                System.exit(0);
+            }
+        	
             runClient();
         }
     }
