@@ -4,24 +4,28 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 
 public class Camera {
-    // Coordinate “mondo” della camera
-    private float x, y, z;
-    private float pitch, yaw;
-    private float speed = 0.01f;
+    private float x, y, z;       // Posizione (mondo)
+    private float pitch, yaw;    // Rotazioni
+    private float speed = 0.005f; // Movimento WASD orizzontale
 
-    // Dimensioni bounding box della camera (larghezza, altezza)
-    // per evitare di entrare nei blocchi
-    private static final float COLLISION_WIDTH  = 0.15f;  // diametro “personaggio”
-    private static final float COLLISION_HEIGHT = 1.0f;  // altezza
+    // Bounding box per collisione
+    private static final float COLLISION_WIDTH  = 0.15f;
+    private static final float COLLISION_HEIGHT = 1.0f;
+
+    // --- GRAVITÀ e SALTO ---
+    private boolean useGravity = true;   // Se true, la gravità spinge in giù
+    private float velocityY = 0f;        // Velocità verticale
+    private final float GRAVITY = -0.0058f; // Gravità “lenta”, da tarare
+    private final float JUMP_VELOCITY = 1.0f * World.BLOCK_SIZE / 0.260f; 
+    // 3 blocchi / (16ms) => vedi nota sotto per la logica
+    // Se preferisci, puoi fare un salto istantaneo.
 
     private World world;
     private WorldRenderer worldRenderer;
 
-    // Modalità selezione blocco
+    // Modalità selezione blocco (B)
     private boolean selectingBlockMode = false;
     private int selectedBlockX, selectedBlockY, selectedBlockZ;
-
-    // Per gestire toggle B
     private boolean wasBPressedLastFrame = false;
 
     public Camera(float startX, float startY, float startZ, World world, WorldRenderer worldRenderer) {
@@ -32,16 +36,12 @@ public class Camera {
         this.worldRenderer = worldRenderer;
     }
 
-    /**
-     * Viene chiamato ad ogni frame per gestire input e logica di movimento/posizionamento.
-     */
     public void updateInput(long window) {
-        // Toggle B
+        // 1) Toggle B
         boolean isBPressed = (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_B) == GLFW.GLFW_PRESS);
         if (isBPressed && !wasBPressedLastFrame) {
             selectingBlockMode = !selectingBlockMode;
             if (selectingBlockMode) {
-                // Se entriamo in modalità selezione, individua un blocco vicino (3 blocchi davanti)
                 selectBlockNearFront();
                 System.out.println("[Modalità selezione: ON]");
             } else {
@@ -50,136 +50,91 @@ public class Camera {
         }
         wasBPressedLastFrame = isBPressed;
 
-        if (!selectingBlockMode) {
-            // 1) Se NON siamo in selezione: WASD e SHIFT/SPACE muovono la camera, frecce ruotano
-            handleCameraMovement(window);
-            handleCameraRotation(window);
-        } else {
-            // 2) Se SIAMO in selezione: frecce spostano la selezione in piano XZ,
-            //    SHIFT/SPACE la spostano su/giù
+        // 2) Selezione blocchi (B) => spostiamo blocco, SHIFT/SPACE muove blocco
+        if (selectingBlockMode) {
             handleSelectionXZMovement(window);
             handleSelectionUpDown(window);
 
-            // ENTER -> posiziona blocco
+            // ENTER => piazza blocco
             if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_ENTER) == GLFW.GLFW_PRESS) {
                 placeBlockHere();
+            }
+        } 
+        else {
+            // 3) Movimenti standard: WASD, SHIFT/SPACE => volo / salto
+            handleCameraMovement(window);
+            handleCameraRotation(window);
+        }
+
+        // 4) Gestione gravità personalizzata
+        handleGravityAndJump(window);
+
+        // 5) Applica movimento verticale e collisioni
+        applyVerticalMovement();
+    }
+
+    /**
+     * Gestisce la logica della “gravità” personalizzata:
+     * - Se non premi SPACE, la gravità tira in giù
+     * - Se premi SPACE una volta, fai un salto di 3 blocchi
+     * - Se tieni premuto SPACE, continui a salire
+     * - Se rilasci SPACE in aria, ti fermi (velocityY = 0) e rimani sospeso
+     */
+    private void handleGravityAndJump(long window) {
+        // Se vogliamo usare la gravità
+        if (useGravity) {
+            // Controlliamo se premi SPACE
+            if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS) {
+                // Se velocityY <= 0 => stiamo a terra o stiamo cadendo => set jump
+                if (velocityY <= 0f) {
+                    // Un singolo colpo => jump di 3 blocchi
+                    velocityY = JUMP_VELOCITY; 
+                    // E continuiamo a salire finché tieni premuto space
+                } else {
+                    // Se velocityY > 0 e tieni premuto => continua a salire
+                    velocityY = JUMP_VELOCITY; // reset velocity positiva
+                }
+            } 
+            else {
+                // Se RILASCI SPACE mentre velocityY > 0 => ti fermi in aria
+                if (velocityY > 0f) {
+                    velocityY = 0f; // rimani sospeso
+                } 
+                else {
+                    // Altrimenti, se non stai salendo, la gravità tira giù
+                    velocityY += GRAVITY;
+                }
             }
         }
     }
 
     /**
-     * Quando entriamo in modalità selezione, prendiamo un blocco “abbastanza vicino”
-     * a ~3 blocchi di distanza in direzione YAW. Se non è aria, o se è aria, non importa:
-     * l’importante è avere “qualcosa di visibile”. Se non troviamo “il blocco esatto di fronte”,
-     * va bene uno vicino.
+     * Sposta la camera verticalmente in base alla velocityY.
+     * Controlla collisione: se colpisco un blocco, mi fermo e setto velocityY=0.
      */
-    private void selectBlockNearFront() {
-        // Calcoliamo una distanza di 3 blocchi davanti a noi
-        float dist = 3.0f * World.BLOCK_SIZE;
-        float frontX = x + (float)Math.sin(Math.toRadians(yaw)) * dist;
-        float frontZ = z - (float)Math.cos(Math.toRadians(yaw)) * dist;
+    private void applyVerticalMovement() {
+        if (velocityY != 0f) {
+            float oldY = y;
+            float dy = velocityY * 0.016f; 
+            // assumendo ~16ms/frame => v = dx/dt => dx = v*dt
+            // se hai un loop a 60fps costante, ~0.016f secondi per frame
 
-        int bx = (int)(frontX / World.BLOCK_SIZE);
-        int bz = (int)(frontZ / World.BLOCK_SIZE);
-
-        // Troviamo la superficie. Se è acqua o aria, in ogni caso, la Y è la massima “non AIR”.
-        int surfaceY = world.getSurfaceHeight(bx, bz);
-
-        selectedBlockX = bx;
-        selectedBlockY = surfaceY;
-        selectedBlockZ = bz;
-        clampSelection();
-
-        System.out.println("Blocco selezionato iniziale: ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
-    }
-
-    /**
-     * Selezione: SHIFT/SPACE muovono la Y del blocco selezionato
-     */
-    private void handleSelectionUpDown(long window) {
-        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS) {
-            selectedBlockY++;
-            clampSelection();
-            System.out.println("Selezione spostata in alto a ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
-            sleep50ms();
-        }
-        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS) {
-            selectedBlockY--;
-            clampSelection();
-            System.out.println("Selezione spostata in basso a ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
-            sleep50ms();
+            float newY = y + dy;
+            if (!collidesWithBlocks(x, newY, z)) {
+                y = newY;
+            } else {
+                // Collisione in su o in giù => stop
+                velocityY = 0f;
+                // Se era un salto e colpisco la "volta", mi fermo
+                // Se era caduta e colpisco il terreno, mi fermo
+                y = oldY; 
+            }
         }
     }
 
-    /**
-     * Selezione: le frecce si basano sull’orientamento yaw della camera,
-     * spostando ±1 in X/Z in direzione avanti/indietro/sinistra/destra
-     */
-    private void handleSelectionXZMovement(long window) {
-        float rad = (float)Math.toRadians(yaw);
-        int forwardDX = Math.round((float)Math.sin(rad));
-        int forwardDZ = Math.round((float)-Math.cos(rad));
-
-        float radLeft = (float)Math.toRadians(yaw - 90.0f);
-        int leftDX = Math.round((float)Math.sin(radLeft));
-        int leftDZ = Math.round((float)-Math.cos(radLeft));
-
-        // UP => avanti
-        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_UP) == GLFW.GLFW_PRESS) {
-            selectedBlockX += forwardDX;
-            selectedBlockZ += forwardDZ;
-            clampSelection();
-            System.out.println("Selezione => ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
-            sleep50ms();
-        }
-        // DOWN => indietro
-        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_DOWN) == GLFW.GLFW_PRESS) {
-            selectedBlockX -= forwardDX;
-            selectedBlockZ -= forwardDZ;
-            clampSelection();
-            System.out.println("Selezione => ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
-            sleep50ms();
-        }
-        // LEFT => sinistra
-        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT) == GLFW.GLFW_PRESS) {
-            selectedBlockX += leftDX;
-            selectedBlockZ += leftDZ;
-            clampSelection();
-            System.out.println("Selezione => ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
-            sleep50ms();
-        }
-        // RIGHT => destra
-        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT) == GLFW.GLFW_PRESS) {
-            selectedBlockX -= leftDX;
-            selectedBlockZ -= leftDZ;
-            clampSelection();
-            System.out.println("Selezione => ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
-            sleep50ms();
-        }
-    }
-
-    /**
-     * Piazza il blocco GRIGIO **esattamente** nella posizione selezionata.
-     */
-    private void placeBlockHere() {
-        int bx = selectedBlockX;
-        int by = selectedBlockY;
-        int bz = selectedBlockZ;
-
-        if (world.getBlock(bx, by, bz) == Block.AIR) {
-            world.setBlock(bx, by, bz, Block.GRAY_BLOCK);
-            worldRenderer.rebuildMeshes();
-            System.out.println("Blocco GRIGIO posizionato in ("+bx+", "+by+", "+bz+")");
-        } else {
-            System.out.println("❌ Non posso piazzare in ("+bx+", "+by+", "+bz+"): non è aria");
-        }
-    }
-
-    /**
-     * Movimenti standard della camera (WASD, SHIFT/SPACE) se *non* siamo in selezione.
-     */
     private void handleCameraMovement(long window) {
-        float dx = 0, dy = 0, dz = 0;
+        // Movimenti WASD (orizzontale)
+        float dx = 0f, dz = 0f;
 
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_W) == GLFW.GLFW_PRESS) {
             dx += (float)Math.sin(Math.toRadians(yaw)) * speed;
@@ -198,32 +153,24 @@ public class Camera {
             dz += (float)Math.sin(Math.toRadians(yaw)) * speed;
         }
 
-        // SHIFT/SPACE muovono la camera su/giù (solo se non in selezione)
-        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS) {
-            dy += speed;
-        }
-        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS) {
-            dy -= speed;
-        }
-
-        // Proviamo a muoverci su x, y, z con controlli di collisione bounding box
-        attemptMove(dx, 0, 0);
-        attemptMove(0, dy, 0);
-        attemptMove(0, 0, dz);
+        // SHIFT => scendere come “volo” (solo se vogliamo “creative”)
+        // in modo simile potresti fare: velocityY = -someValue
+        // ma la specifica dice "spaziatrice" + "gravità" particolare, quindi decidi tu.
+        // Nel frattempo, proviamo a muovere solo orizzontalmente
+        attemptMove(dx, 0f, dz);
     }
 
-    /**
-     * Ruotiamo la camera con le frecce direzionali (solo se non in selezione).
-     */
     private void handleCameraRotation(long window) {
+        // Frecce per pitch, yaw
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_UP) == GLFW.GLFW_PRESS) {
             pitch -= 1f;
         }
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_DOWN) == GLFW.GLFW_PRESS) {
             pitch += 1f;
         }
-        pitch = Math.max(-85f, Math.min(pitch, 85f));
-        
+        // Limita pitch
+        pitch = Math.max(-85f, Math.min(85f, pitch));
+
         if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT) == GLFW.GLFW_PRESS) {
             yaw -= 1f;
         }
@@ -233,12 +180,13 @@ public class Camera {
     }
 
     /**
-     * Spostiamo la camera di (dx, dy, dz) controllando collisioni a bounding box,
-     * così non entriamo dentro i blocchi e non “vediamo dentro”.
+     * Spostiamo la camera orizzontalmente, controllando collisione con 18 punti
      */
     private void attemptMove(float dx, float dy, float dz) {
+        if (dx == 0 && dy == 0 && dz == 0) return;
+
         float newX = x + dx;
-        float newY = y + dy;
+        float newY = y + dy; // di solito 0
         float newZ = z + dz;
 
         if (!collidesWithBlocks(newX, newY, newZ)) {
@@ -249,38 +197,34 @@ public class Camera {
     }
 
     /**
-     * Controlla se il bounding box della camera in (nx, ny, nz) interseca un blocco solido.
-     * Usiamo 8 “angoli” della hitbox (COLLISION_WIDTH/2 x COLLISION_HEIGHT) per verificare.
+     * Collisione a 18 punti: 3 in X, 2 in Y (base e top), 3 in Z => 3×2×3 = 18
      */
     private boolean collidesWithBlocks(float nx, float ny, float nz) {
         float halfW = COLLISION_WIDTH / 2f;
         float topY  = ny + COLLISION_HEIGHT;
 
-        // Invece di cornerXs, cornerZs con due soli valori, usiamo 3 valori: -halfW, 0, +halfW
+        // Discretizziamo su -halfW, 0, +halfW
         float[] checkX = { nx - halfW, nx, nx + halfW };
         float[] checkY = { ny, topY };
         float[] checkZ = { nz - halfW, nz, nz + halfW };
 
-        // Ora facciamo un triplo for su questi array
         for (float cx : checkX) {
             for (float cy : checkY) {
                 for (float cz : checkZ) {
                     if (isSolidBlockAt(cx, cy, cz)) {
-                        return true;  // c’è collisione
+                        return true; 
                     }
                 }
             }
         }
-
-        return false; // Nessuna collisione trovata
+        return false;
     }
 
-    
     private boolean isSolidBlockAt(float wx, float wy, float wz) {
         int bx = (int)Math.floor(wx / World.BLOCK_SIZE);
         int by = (int)Math.floor(wy / World.BLOCK_SIZE);
         int bz = (int)Math.floor(wz / World.BLOCK_SIZE);
-        
+
         if (bx < 0 || bx >= World.SIZE_X ||
             by < 0 || by >= World.HEIGHT ||
             bz < 0 || bz >= World.SIZE_Z) {
@@ -290,25 +234,96 @@ public class Camera {
     }
 
     /**
-     * Converte (x, y, z) in coordinate mondo in indice di blocco e verifica se è solido.
+     * B mode: SHIFT/SPACE spostano Y del blocco selezionato
      */
-    private boolean isBlockSolidAt(float wx, float wy, float wz) {
-        int bx = (int)Math.floor(wx / World.BLOCK_SIZE);
-        int by = (int)Math.floor(wy / World.BLOCK_SIZE);
-        int bz = (int)Math.floor(wz / World.BLOCK_SIZE);
-
-        // Se fuori dal mondo, consideriamo "non solido"
-        if (bx < 0 || bx >= World.SIZE_X ||
-            by < 0 || by >= World.HEIGHT ||
-            bz < 0 || bz >= World.SIZE_Z) {
-            return false;
+    private void handleSelectionUpDown(long window) {
+        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_SPACE) == GLFW.GLFW_PRESS) {
+            selectedBlockY++;
+            clampSelection();
+            System.out.println("Selezione su: ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
+            sleep50ms();
         }
-        return world.getBlock(bx, by, bz).isSolid();
+        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS) {
+            selectedBlockY--;
+            clampSelection();
+            System.out.println("Selezione giù: ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
+            sleep50ms();
+        }
     }
 
     /**
-     * Assicuriamo che la selezione rimanga nei confini del mondo.
+     * B mode: frecce spostano XZ in base a yaw
      */
+    private void handleSelectionXZMovement(long window) {
+        float rad = (float)Math.toRadians(yaw);
+        int forwardDX = Math.round((float)Math.sin(rad));
+        int forwardDZ = Math.round((float)-Math.cos(rad));
+
+        float radLeft = (float)Math.toRadians(yaw - 90f);
+        int leftDX = Math.round((float)Math.sin(radLeft));
+        int leftDZ = Math.round((float)-Math.cos(radLeft));
+
+        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_UP) == GLFW.GLFW_PRESS) {
+            selectedBlockX += forwardDX;
+            selectedBlockZ += forwardDZ;
+            clampSelection();
+            System.out.println("Selezione: ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
+            sleep50ms();
+        }
+        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_DOWN) == GLFW.GLFW_PRESS) {
+            selectedBlockX -= forwardDX;
+            selectedBlockZ -= forwardDZ;
+            clampSelection();
+            System.out.println("Selezione: ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
+            sleep50ms();
+        }
+        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT) == GLFW.GLFW_PRESS) {
+            selectedBlockX += leftDX;
+            selectedBlockZ += leftDZ;
+            clampSelection();
+            System.out.println("Selezione: ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
+            sleep50ms();
+        }
+        if (GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT) == GLFW.GLFW_PRESS) {
+            selectedBlockX -= leftDX;
+            selectedBlockZ -= leftDZ;
+            clampSelection();
+            System.out.println("Selezione: ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
+            sleep50ms();
+        }
+    }
+
+    private void selectBlockNearFront() {
+        float dist = 3.0f * World.BLOCK_SIZE;
+        float frontX = x + (float)Math.sin(Math.toRadians(yaw)) * dist;
+        float frontZ = z - (float)Math.cos(Math.toRadians(yaw)) * dist;
+
+        int bx = (int)(frontX / World.BLOCK_SIZE);
+        int bz = (int)(frontZ / World.BLOCK_SIZE);
+
+        int surfaceY = world.getSurfaceHeight(bx, bz);
+        selectedBlockX = bx;
+        selectedBlockY = surfaceY;
+        selectedBlockZ = bz;
+        clampSelection();
+
+        System.out.println("Blocco selezionato iniziale: ("+selectedBlockX+", "+selectedBlockY+", "+selectedBlockZ+")");
+    }
+
+    private void placeBlockHere() {
+        int bx = selectedBlockX;
+        int by = selectedBlockY;
+        int bz = selectedBlockZ;
+
+        if (world.getBlock(bx, by, bz) == Block.AIR) {
+            world.setBlock(bx, by, bz, Block.GRAY_BLOCK);
+            worldRenderer.rebuildMeshes();
+            System.out.println("🧱 Blocco GRIGIO posizionato in ("+bx+", "+by+", "+bz+")");
+        } else {
+            System.out.println("❌ Non posso piazzare in ("+bx+", "+by+", "+bz+"): non è aria");
+        }
+    }
+
     private void clampSelection() {
         if (selectedBlockX < 0) selectedBlockX = 0;
         if (selectedBlockX >= World.SIZE_X) selectedBlockX = World.SIZE_X - 1;
@@ -321,23 +336,21 @@ public class Camera {
     }
 
     private void sleep50ms() {
-        try { Thread.sleep(50); } catch (InterruptedException e) {}
+        try {
+            Thread.sleep(50);
+        } catch (InterruptedException e) {}
     }
 
-    /**
-     * Applica le trasformazioni (rotazioni e traslazioni) della camera
-     * in pipeline fissa OpenGL.
-     */
     public void applyTransformations() {
         GL11.glRotatef(pitch, 1, 0, 0);
         GL11.glRotatef(yaw,   0, 1, 0);
-        // Spostiamo la camera un pochino in alto (0.1f) per evitare
-        // di "intersecare" il terreno
+        // offset: alziamo di 0.1f per non intersecare col terreno
         GL11.glTranslatef(-x, -(y + 0.1f), -z);
     }
 
-    // Getter
-    public boolean isSelectingBlockMode() { return selectingBlockMode; }
+    public boolean isSelectingBlockMode() {
+        return selectingBlockMode;
+    }
     public int getSelectedBlockX() { return selectedBlockX; }
     public int getSelectedBlockY() { return selectedBlockY; }
     public int getSelectedBlockZ() { return selectedBlockZ; }

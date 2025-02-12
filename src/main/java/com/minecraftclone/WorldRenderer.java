@@ -146,8 +146,8 @@ public class WorldRenderer {
 
         // 2) Disegno outline (con polygon offset)
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_LINE);
-        //GL11.glPolygonOffset(-1.0f, -1.0f);
-        GL11.glPolygonOffset(-0.1f, -0.1f);
+        GL11.glPolygonOffset(-1.0f, -1.0f);
+        //GL11.glPolygonOffset(-0.01f, -0.01f);
         GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
         GL11.glLineWidth(1.0f);
 
