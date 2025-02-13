@@ -96,17 +96,20 @@ public class Camera {
             while (running) {
                 List<BlockState> blocks = MyApi.getAllBlocks(); 
 
-                if (blocks != null) {
+                if (blocks != null && !blocks.isEmpty()) {
+                	boolean updated = false; // Flag per evitare update inutili
                     for (BlockState bs : blocks) {
                         Block currentBlock = world.getBlock(bs.getX(), bs.getY(), bs.getZ());
 
                         if (currentBlock == Block.AIR) { // Solo se è vuoto
                             world.setBlock(bs.getX(), bs.getY(), bs.getZ(), Block.GRAY_BLOCK);
-
-                            // ❌ Non chiamiamo updateBlockMesh() qui!
-                            // ✅ Accodiamo l'operazione da eseguire nel thread principale
-                            Main.blockUpdatesQueue.add(bs);
+                            
+                            updated = true; // Abbiamo aggiornato almeno un blocco
                         }
+                    }
+                    if (updated) {
+                    	// ✅ Accodiamo l'operazione da eseguire nel thread principale
+                    	Main.requestMeshRebuild = true;
                     }
                 }
 

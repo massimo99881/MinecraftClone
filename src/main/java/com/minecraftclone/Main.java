@@ -35,7 +35,8 @@ public class Main {
     private volatile List<PlayerState> globalPlayers = new ArrayList<>();
     private volatile List<BlockState> globalBlocks  = new ArrayList<>();
     static ConcurrentLinkedQueue<BlockState> blockUpdatesQueue = new ConcurrentLinkedQueue<>();
-    
+    public static volatile boolean requestMeshRebuild = false;
+
     private boolean running = true;
 
     public Main() {
@@ -65,7 +66,9 @@ public class Main {
 
     private void runClient() {
         initWindow();  
-        initScene();   
+        initScene();  
+        
+        loadInitialBlocks();
 
         // Avvia un thread separato per le chiamate REST periodiche
         startNetworkThread();
@@ -77,6 +80,21 @@ public class Main {
         GLFW.glfwDestroyWindow(window);
         GLFW.glfwTerminate();
     }
+    
+    private void loadInitialBlocks() {
+        System.out.println("🔄 Caricamento blocchi dal database...");
+        List<BlockState> blocks = MyApi.getAllBlocks();
+
+        if (blocks != null) {
+            for (BlockState bs : blocks) {
+                world.setBlock(bs.getX(), bs.getY(), bs.getZ(), Block.GRAY_BLOCK);
+            }
+            // ✅ Aggiorna la mesh una volta caricati tutti i blocchi
+            worldRenderer.rebuildMeshes();
+            System.out.println("✅ Blocchi caricati e mesh aggiornata!");
+        }
+    }
+
 
     private void initWindow() {
         if (!GLFW.glfwInit()) {
@@ -190,6 +208,12 @@ public class Main {
                 );
             }
 
+            if (requestMeshRebuild) {
+                System.out.println("🔄 Ricaricamento mesh nel main thread...");
+                worldRenderer.rebuildMeshes();  // 🛑 Ora è sicuro, siamo nel main thread
+                requestMeshRebuild = false; // Reset della flag
+            }
+            
             // 🚀 Applica gli aggiornamenti della coda solo nel thread principale
             processBlockUpdates();
             // Integra i players e i blocchi nel main thread
@@ -205,13 +229,26 @@ public class Main {
     }
 
     private void processBlockUpdates() {
+        boolean updated = false;
+        int updateCount = 0; // Conta i blocchi aggiornati
+
         while (!blockUpdatesQueue.isEmpty()) {
             BlockState bs = blockUpdatesQueue.poll();
             if (bs != null) {
-                worldRenderer.updateBlockMesh(bs.getX(), bs.getY(), bs.getZ());
+                world.setBlock(bs.getX(), bs.getY(), bs.getZ(), Block.GRAY_BLOCK);
+                worldRenderer.updateBlockMesh(bs.getX(), bs.getY(), bs.getZ()); // ✅ Aggiorna SOLO il blocco modificato
+                updated = true;
+                updateCount++;
             }
         }
+
+        // Se abbiamo aggiornato più di 10 blocchi, ricarichiamo tutte le mesh per sicurezza
+        if (updated && updateCount > 10) {
+            System.out.println("🔄 Troppi blocchi aggiornati, ricarico tutte le mesh...");
+            worldRenderer.rebuildMeshes(); // 🛑 Ricostruiamo solo se ci sono molte modifiche
+        }
     }
+
 
     /**
      * Integra i dati presi dal thread di rete:
