@@ -140,24 +140,120 @@ public class Main {
         GL11.glLoadIdentity();
 
         GL11.glClearColor(0.5f, 0.7f, 1.0f, 1.0f);
+        
+        // 🛑 Intercetta la chiusura della finestra
+        GLFW.glfwSetWindowCloseCallback(window, (win) -> {
+            System.out.println("❌ Chiusura finestra rilevata. Terminazione processi...");
+            terminateGame();
+        });
 
         GLFW.glfwShowWindow(window);
     }
 
+    /**
+     * 🛑 Questo metodo assicura che tutti i processi vengano terminati
+     */
+    private void terminateGame() {
+        running = false; // Ferma il loop principale
+
+        // Disconnessione del giocatore dal server
+        if (GameState.currentUserEmail != null) {
+            System.out.println("🔌 Disconnessione del giocatore: " + GameState.currentUserEmail);
+            MyApi.disconnect(GameState.currentUserEmail);
+        }
+
+        // Ferma i thread della Camera
+        if (camera != null) {
+            camera.stopThreads();
+        }
+
+        // Chiudi GLFW correttamente
+        GLFW.glfwDestroyWindow(window);
+        GLFW.glfwTerminate();
+
+        System.out.println("✅ Tutti i processi terminati. Uscita dal gioco.");
+        System.exit(0);
+    }
+    
     private void initScene() {
         atlas = new TextureAtlas("assets/atlas.png");
         world = new World();
         worldRenderer = new WorldRenderer(world);
 
-        float startX = World.SIZE_X / 2 * World.BLOCK_SIZE; 
-        float startZ = World.SIZE_Z / 2 * World.BLOCK_SIZE;
-        int surfaceHeight = world.getSurfaceHeight((int)(startX), (int)(startZ));
-        float startY = (surfaceHeight + 2) * World.BLOCK_SIZE;
+     // Ottieni la posizione salvata dal database
+        PlayerState savedPlayer = getSavedPlayerPosition();
+        
+        float startX, startY, startZ;
+        
+        if (savedPlayer != null && isValidSpawn(savedPlayer.getX(), savedPlayer.getY(), savedPlayer.getZ())) {
+            // 🔥 Se il giocatore ha una posizione salvata, usala
+            startX = savedPlayer.getX();
+            startY = savedPlayer.getY();
+            startZ = savedPlayer.getZ();
+            System.out.println("📍 Ripristinata posizione salvata: " + startX + ", " + startY + ", " + startZ);
+        } else {
+        	// 🏗️ Se è un nuovo giocatore o ha coordinate (0,0,0), assegna una posizione casuale sopra il terreno
+            startX = getRandomSpawnX();
+            startZ = getRandomSpawnZ();
+            startY = 1+world.getSurfaceHeight((int) startX, (int) startZ) * World.BLOCK_SIZE + (2 * World.BLOCK_SIZE);
+            
+            System.out.println("🆕 Nuovo giocatore! Spawn in posizione casuale: " + startX + ", " + startY + ", " + startZ);
+        }
 
-        // Esempio: fontRenderer se hai la tua classe STB-based
+        // 🎨 Inizializza il renderer per il testo
         fontRenderer = new TrueTypeFont("/assets/font/LiberationSans-Bold.ttf", 32.0f);
 
+        // 🏃 Crea la camera con la posizione trovata
         camera = new Camera(startX, startY, startZ, world, worldRenderer);
+    }
+    
+    /**
+     * 🎲 Genera una posizione X casuale valida nel mondo.
+     */
+    private float getRandomSpawnX() {
+        return (float) (Math.random() * (World.SIZE_X * World.BLOCK_SIZE));
+    }
+
+    /**
+     * 🎲 Genera una posizione Z casuale valida nel mondo.
+     */
+    private float getRandomSpawnZ() {
+        return (float) (Math.random() * (World.SIZE_Z * World.BLOCK_SIZE));
+    }
+    
+    /**
+     * ✅ Controlla se la posizione di spawn è valida:
+     * - Deve essere sopra il terreno.
+     * - Non deve essere sopra un blocco occupato.
+     */
+    private boolean isValidSpawn(float x, float y, float z) {
+        int bx = (int) (x / World.BLOCK_SIZE);
+        int by = (int) (y / World.BLOCK_SIZE);
+        int bz = (int) (z / World.BLOCK_SIZE);
+
+        if (bx < 0 || bx >= World.SIZE_X || bz < 0 || bz >= World.SIZE_Z) {
+            return false; // 🚫 Fuori dal mondo
+        }
+
+        Block blockBelow = world.getBlock(bx, by - 1, bz);
+        Block blockAtSpawn = world.getBlock(bx, by, bz);
+
+        return (blockBelow != Block.AIR && blockAtSpawn == Block.AIR);
+    }
+    
+    /**
+     * 🔍 Recupera la posizione salvata del giocatore dal database.
+     * Se esiste, restituisce il PlayerState, altrimenti null.
+     */
+    private PlayerState getSavedPlayerPosition() {
+        List<PlayerState> players = MyApi.getPlayers();
+
+        for (PlayerState p : players) {
+            if (p.getEmail().equalsIgnoreCase(GameState.currentUserEmail)) {
+                return p;
+            }
+        }
+        return null;
     }
 
     /**

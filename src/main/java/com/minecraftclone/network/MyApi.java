@@ -40,6 +40,19 @@ public class MyApi {
             return Collections.emptyList();
         }
     }
+    
+    public static List<String> getAssignedColors() {
+        List<PlayerState> players = getPlayers();
+        List<String> colors = new ArrayList<>();
+        
+        for (PlayerState player : players) {
+            if (player.getColor() != null && !player.getColor().isEmpty()) {
+                colors.add(player.getColor());
+            }
+        }
+        return colors;
+    }
+
 
     // BLOCKS
     public static List<BlockState> getAllBlocks() {
