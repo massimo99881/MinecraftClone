@@ -1,12 +1,29 @@
 package com.minecraftclone;
 
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 
 import com.minecraftclone.network.MyApi;
+import com.minecraftclone.state.BlockState;
 import com.minecraftclone.state.GameState;
 
 public class Camera {
+	
+	private static class PositionUpdate {
+        String email;
+        float x, y, z;
+
+        PositionUpdate(String email, float x, float y, float z) {
+            this.email = email;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+    }
+	
     private float x, y, z;       // Posizione (mondo)
     private float pitch, yaw;    // Rotazioni
     private float speed = 0.005f; // Movimento WASD orizzontale
@@ -20,15 +37,19 @@ public class Camera {
     private float velocityY = 0f;        // Velocità verticale
     private final float GRAVITY = -0.0058f; // Gravità “lenta”, da tarare
     private final float JUMP_VELOCITY = 1.0f * World.BLOCK_SIZE / 0.260f; 
-    // 3 blocchi / (16ms) => vedi nota sotto per la logica
-    // Se preferisci, puoi fare un salto istantaneo.
-    
+
     private static final float POSITION_UPDATE_INTERVAL = 0.5f; 
     private float timeSinceLastUpdate = 0f; 
     // se vuoi inviare ~2 volte al secondo
 
     private World world;
     private WorldRenderer worldRenderer;
+    
+    // Coda per le posizioni da inviare
+    private static ConcurrentLinkedQueue<PositionUpdate> positionQueue = new ConcurrentLinkedQueue<>();
+    
+
+    private volatile boolean running = true;
 
     // Modalità selezione blocco (B)
     private boolean selectingBlockMode = false;
@@ -41,6 +62,69 @@ public class Camera {
         this.z = startZ;
         this.world = world;
         this.worldRenderer = worldRenderer;
+        
+        // Avvia il thread di aggiornamento posizione
+        startPositionUpdateThread();
+        
+        // Avvia il thread di sincronizzazione blocchi
+        startBlockSyncThread();
+    }
+    
+   
+    
+    private void startPositionUpdateThread() {
+        Thread positionThread = new Thread(() -> {
+            while (running) {
+                PositionUpdate update = positionQueue.poll();
+                if (update != null) {
+                    MyApi.updatePosition(update.email, update.x, update.y, update.z);
+                }
+                try {
+                    Thread.sleep(1000); // Sincronizza ogni 1 s per ridurre carico REST
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }, "PositionUpdateThread");
+
+        positionThread.start();
+    }
+    
+ // Thread che scarica e aggiorna i blocchi dal server
+    private void startBlockSyncThread() {
+        Thread blockSyncThread = new Thread(() -> {
+            while (running) {
+                List<BlockState> blocks = MyApi.getAllBlocks(); 
+
+                if (blocks != null) {
+                    for (BlockState bs : blocks) {
+                        Block currentBlock = world.getBlock(bs.getX(), bs.getY(), bs.getZ());
+
+                        if (currentBlock == Block.AIR) { // Solo se è vuoto
+                            world.setBlock(bs.getX(), bs.getY(), bs.getZ(), Block.GRAY_BLOCK);
+
+                            // ❌ Non chiamiamo updateBlockMesh() qui!
+                            // ✅ Accodiamo l'operazione da eseguire nel thread principale
+                            Main.blockUpdatesQueue.add(bs);
+                        }
+                    }
+                }
+
+                try {
+                    Thread.sleep(2000); // Scarica i blocchi ogni 2 secondi
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }, "BlockSyncThread");
+
+        blockSyncThread.start();
+    }
+
+
+    
+    public void stopThreads() {
+        running = false;
     }
 
     public void updateInput(long window) {
@@ -208,10 +292,9 @@ public class Camera {
     }
     
     private void sendPositionToServer() {
-        // Chiama MyApi.updatePosition(...) con x, y, z
-        // Nota: la x,y,z attuali della camera in coordinate “mondo”
-        // Se la webapp memorizza “blocchi” e non “metri”, potresti dover scalare.
-        MyApi.updatePosition(GameState.currentUserEmail, x, y, z);
+        
+     // Aggiunge una richiesta di aggiornamento alla coda
+        positionQueue.add(new PositionUpdate(GameState.currentUserEmail, x, y, z));
     }
 
     /**
@@ -335,10 +418,15 @@ public class Camera {
 
         if (world.getBlock(bx, by, bz) == Block.AIR) {
             world.setBlock(bx, by, bz, Block.GRAY_BLOCK);
+            //TODO non so se è meglio: worldRenderer.updateBlockMesh(bx, by, bz); // 🔥 Aggiorna solo il blocco modificato!
             worldRenderer.rebuildMeshes();
-            System.out.println("🧱 Blocco GRIGIO posizionato in ("+bx+", "+by+", "+bz+")");
+            
+            // 🚀 Invio asincrono per non rallentare il gioco
+            new Thread(() -> MyApi.placeBlock(bx, by, bz, "GRAY_BLOCK", GameState.currentUserEmail)).start();
+            
+            System.out.println("🧱 Blocco GRIGIO posizionato in (" + bx + ", " + by + ", " + bz + ")");
         } else {
-            System.out.println("❌ Non posso piazzare in ("+bx+", "+by+", "+bz+"): non è aria");
+            System.out.println("❌ Non posso piazzare in (" + bx + ", " + by + ", " + bz + "): non è aria");
         }
     }
 

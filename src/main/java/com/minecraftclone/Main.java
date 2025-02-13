@@ -1,7 +1,10 @@
 package com.minecraftclone;
 
 import java.nio.FloatBuffer;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
@@ -10,9 +13,10 @@ import org.lwjgl.glfw.GLFWVidMode;
 import org.lwjgl.opengl.GL;
 import org.lwjgl.opengl.GL11;
 
-import com.minecraftclone.font.TrueTypeFont;  // la tua classe per i font, se esiste
+import com.minecraftclone.font.TrueTypeFont;
 import com.minecraftclone.login.LoginFrame;
 import com.minecraftclone.network.MyApi;
+import com.minecraftclone.state.BlockState;
 import com.minecraftclone.state.GameState;
 import com.minecraftclone.state.PlayerState;
 
@@ -27,31 +31,49 @@ public class Main {
     private int width = 800;
     private int height = 600;
 
+    // Elenco dei players e dei blocchi ricevuti
+    private volatile List<PlayerState> globalPlayers = new ArrayList<>();
+    private volatile List<BlockState> globalBlocks  = new ArrayList<>();
+    static ConcurrentLinkedQueue<BlockState> blockUpdatesQueue = new ConcurrentLinkedQueue<>();
+    
+    private boolean running = true;
+
     public Main() {
     }
 
     public static void main(String[] args) {
+        // 1) Mostra finestra login
         LoginFrame loginFrame = new LoginFrame();
         loginFrame.setVisible(true);
 
+        // 2) Aspetta che la finestra si chiuda
         while (loginFrame.isVisible()) {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {}
         }
 
+        // 3) Se login fallito, esci
         if (!loginFrame.isLoginOk()) {
-            System.out.println("Login fallito. Uscita dall'applicazione.");
+            System.out.println("Login fallito. Esco.");
             System.exit(0);
         }
 
+        // 4) Avvia il client
         new Main().runClient();
     }
 
     private void runClient() {
         initWindow();  
         initScene();   
+
+        // Avvia un thread separato per le chiamate REST periodiche
+        startNetworkThread();
+
         loop();        
+
+        // Termina
+        running = false; // ferma network thread
         GLFW.glfwDestroyWindow(window);
         GLFW.glfwTerminate();
     }
@@ -120,6 +142,31 @@ public class Main {
         camera = new Camera(startX, startY, startZ, world, worldRenderer);
     }
 
+    /**
+     * Thread separato per fetchare players + blocks ogni 2 secondi
+     */
+    private void startNetworkThread() {
+        Thread networkThread = new Thread(() -> {
+            while (running) {
+                // Chiama MyApi per fetchare
+                List<PlayerState> newPlayers = MyApi.getPlayers();
+                List<BlockState> newBlocks  = MyApi.getAllBlocks();
+
+                // Memorizza in campi condivisi (volatile)
+                globalPlayers = newPlayers;
+                globalBlocks  = newBlocks;
+
+                try {
+                    Thread.sleep(5000); // fetch ogni 5 secondi
+                } catch (InterruptedException e) {
+                    break;
+                }
+            }
+        }, "NetworkThread");
+
+        networkThread.start();
+    }
+
     private void loop() {
         GL11.glEnable(GL11.GL_DEPTH_TEST);
         GL11.glEnable(GL11.GL_CULL_FACE);
@@ -143,8 +190,10 @@ public class Main {
                 );
             }
 
-            // Disegna i giocatori
-            renderOtherPlayers();
+            // 🚀 Applica gli aggiornamenti della coda solo nel thread principale
+            processBlockUpdates();
+            // Integra i players e i blocchi nel main thread
+            integrateNetworkData();
 
             GLFW.glfwSwapBuffers(window);
             GLFW.glfwPollEvents();
@@ -155,6 +204,34 @@ public class Main {
         }
     }
 
+    private void processBlockUpdates() {
+        while (!blockUpdatesQueue.isEmpty()) {
+            BlockState bs = blockUpdatesQueue.poll();
+            if (bs != null) {
+                worldRenderer.updateBlockMesh(bs.getX(), bs.getY(), bs.getZ());
+            }
+        }
+    }
+
+    /**
+     * Integra i dati presi dal thread di rete:
+     * - player positions (non ricalcolate?), 
+     * - blocchi: setBlock su world (solo i cambi)
+     */
+    private void integrateNetworkData() {
+        // Aggiorniamo i blocchi
+        for (BlockState bs : globalBlocks) {
+            
+            world.setBlock(bs.getX(), bs.getY(), bs.getZ(), Block.GRAY_BLOCK);
+            //TODO non sono sicuro che è da fare: MyApi.placeBlock(bs.getX(),bs.getY(),bs.getZ(), "GRAY_BLOCK", GameState.currentUserEmail);
+        }
+        // Rebuild mesh
+        //TODO: non sono sicuro che è da fare: worldRenderer.rebuildMeshes();
+
+        // la posizione di players, se usi p.x/p.y/p.z
+        renderOtherPlayers();
+    }
+    
     private void renderOtherPlayers() {
         List<PlayerState> players = MyApi.getPlayers();
         for (PlayerState p : players) {

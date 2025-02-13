@@ -193,4 +193,31 @@ public class WorldRenderer {
         outlineMesh_Leaves.cleanUp();
         outlineMesh_Gray.cleanUp();
     }
+    
+    public void updateBlockMesh(int x, int y, int z) {
+        Block block = world.getBlock(x, y, z);
+        if (block == Block.AIR) return; // Se è aria, non serve aggiornare
+
+        MeshBuilder builder = new MeshBuilder();
+        builder.addCube(x, y, z, block);
+
+        Mesh targetMesh = getTargetMesh(block);
+        if (targetMesh != null) {
+            targetMesh.upload(builder); // Aggiorna solo la mesh di quel blocco
+        }
+    }
+    
+    private Mesh getTargetMesh(Block block) {
+        switch (block.getName()) {
+            case "DIRT":       return outlineMesh_Dirt;
+            case "GRASS":      return outlineMesh_Grass;
+            case "WATER":      return outlineMesh_Water;
+            case "TRUNK":      return outlineMesh_Trunk;
+            case "LEAVES":     return outlineMesh_Leaves;
+            case "GRAY_BLOCK": return outlineMesh_Gray;  // Per i blocchi posizionati dai giocatori
+            default:           return fillMesh; // Default: mesh di riempimento
+        }
+    }
+
+
 }

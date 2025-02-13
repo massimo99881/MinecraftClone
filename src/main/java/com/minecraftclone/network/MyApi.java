@@ -5,9 +5,8 @@ import java.nio.charset.StandardCharsets;
 import java.io.*;
 import java.util.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import com.minecraftclone.state.PlayerState;
 import com.minecraftclone.state.BlockState;
+import com.minecraftclone.state.PlayerState;
 
 public class MyApi {
     private static final String BASE_URL = "http://localhost:5051/api";
@@ -56,25 +55,45 @@ public class MyApi {
             return Collections.emptyList();
         }
     }
+    
+    public static List<BlockState> getUpdatedBlocks(long lastTimestamp){
+        String json = doGet(BASE_URL + "/blocks/updates?since=" + lastTimestamp);
+        if (json.startsWith("ERROR")) return Collections.emptyList();
+        
+        try {
+            BlockState[] arr = mapper.readValue(json, BlockState[].class);
+            return Arrays.asList(arr);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
+    }
+
+
+    // placeBlock
     public static String placeBlock(int x, int y, int z, String blockType, String placedBy) {
-        String url = BASE_URL 
-            + "/blocks?x=" + x 
-            + "&y=" + y 
-            + "&z=" + z
-            + "&type=" + enc(blockType)
-            + "&placedBy=" + enc(placedBy);
-        return doPost(url);
+        String url = BASE_URL + "/blocks";
+
+        // Creiamo il JSON da inviare
+        String jsonBody = "{"
+            + "\"x\": " + x + ","
+            + "\"y\": " + y + ","
+            + "\"z\": " + z + ","
+            + "\"blockType\": \"" + blockType + "\","
+            + "\"placedBy\": \"" + placedBy + "\""
+            + "}";
+
+        return doPostJson(url, jsonBody);
     }
     
-    
-
-    // HTTP METODI
+    // updatePosition
     public static String updatePosition(String email, float x, float y, float z) {
         String url = BASE_URL + "/players/updatePos?email=" + enc(email)
                    + "&x=" + x + "&y=" + y + "&z=" + z;
         return doPost(url);
     }
 
+    // Metodi HTTP
     private static String doGet(String urlStr) {
         try {
             URL url = new URL(urlStr);
@@ -105,6 +124,39 @@ public class MyApi {
             return "ERROR_HTTP_" + code;
         } catch (Exception e) {
             return "ERROR_" + e.getMessage();
+        }
+    }
+    
+    private static String doPostJson(String url, String jsonBody) {
+        try {
+            URL obj = new URL(url);
+            HttpURLConnection con = (HttpURLConnection) obj.openConnection();
+            con.setRequestMethod("POST");
+            con.setRequestProperty("Content-Type", "application/json");
+            con.setRequestProperty("Accept", "application/json");
+            con.setDoOutput(true);
+
+            try (OutputStream os = con.getOutputStream()) {
+                byte[] input = jsonBody.getBytes("utf-8");
+                os.write(input, 0, input.length);
+            }
+
+            int responseCode = con.getResponseCode();
+            if (responseCode == HttpURLConnection.HTTP_OK) {
+                try (BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream(), "utf-8"))) {
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = in.readLine()) != null) {
+                        response.append(line.trim());
+                    }
+                    return response.toString();
+                }
+            } else {
+                return "Errore: " + responseCode;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return "Errore di connessione";
         }
     }
 

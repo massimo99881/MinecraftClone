@@ -1,10 +1,14 @@
 package com.minecraftclone.state;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true) // ✅ Ignora campi extra nel JSON
 public class BlockState {
     private Long id;
     private int x, y, z;
     private String blockType;
     private String placedBy;
+    private long lastUpdated; // ✅ Aggiunto il timestamp
 
     public Long getId() {
         return id;
@@ -46,5 +50,12 @@ public class BlockState {
     }
     public void setPlacedBy(String placedBy) {
         this.placedBy = placedBy;
+    }
+
+    public long getLastUpdated() { // ✅ Getter per lastUpdated
+        return lastUpdated;
+    }
+    public void setLastUpdated(long lastUpdated) {
+        this.lastUpdated = lastUpdated;
     }
 }
